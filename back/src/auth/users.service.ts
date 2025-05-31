@@ -1,30 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-
-export type User = {
-  userId: number;
-  username: string;
-  password: string;
-};
+import { UserEntity } from './entities/user.entity';
+import { User } from './interfaces/auth.interface';
 
 @Injectable()
 export class UsersService {
-  private readonly users: User[] = [
-    // Example user: { userId: 1, username: 'test', password: 'hashed' }
-  ];
+  private readonly users: UserEntity[] = [];
 
-  async findOne(username: string): Promise<User | undefined> {
+  async findOne(username: string): Promise<UserEntity | undefined> {
     return this.users.find(user => user.username === username);
   }
 
-  async create(username: string, password: string): Promise<User> {
+  async create(username: string, password: string): Promise<UserEntity> {
+    // Check if user already exists
+    const existingUser = await this.findOne(username);
+    if (existingUser) {
+      throw new ConflictException('Username already exists');
+    }
+
     const hashed = await bcrypt.hash(password, 10);
-    const user = { userId: Date.now(), username, password: hashed };
+    const user = new UserEntity({ 
+      userId: Date.now(), 
+      username, 
+      password: hashed 
+    });
+    
     this.users.push(user);
     return user;
   }
 
-  async validateUser(username: string, pass: string): Promise<User | null> {
+  async validateUser(username: string, pass: string): Promise<UserEntity | null> {
     const user = await this.findOne(username);
     if (user && await bcrypt.compare(pass, user.password)) {
       return user;
