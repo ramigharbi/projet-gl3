@@ -95,7 +95,7 @@ function Editor({ docId = 'default-doc' }) {
     loading, 
     addComment, 
     // updateComment, // To be implemented
-    // deleteComment, // To be implemented
+    deleteComment, // Uncommented deleteComment
     reload 
   } = useCommentsUnified(docId);
 
@@ -234,7 +234,23 @@ function Editor({ docId = 'default-doc' }) {
       console.error("[Editor.js] Failed to add comment:", error);
       alert("Failed to add comment.");
     }
-  };  return (
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    // console.log(`[Editor.js] Attempting to delete comment: ${commentId}`); // Debug
+    if (window.confirm('Are you sure you want to delete this comment?')) {
+      try {
+        await deleteComment(commentId);
+        // console.log(`[Editor.js] Comment ${commentId} deleted successfully.`); // Debug
+        // Optionally, add a success notification here
+      } catch (error) {
+        console.error(`[Editor.js] Failed to delete comment ${commentId}:`, error);
+        alert("Failed to delete comment. See console for details.");
+      }
+    }
+  };
+
+  return (
     <MantineProvider theme={theme}>
       <style>
         {`
@@ -698,6 +714,7 @@ function Editor({ docId = 'default-doc' }) {
                                 e.currentTarget.style.opacity = '0.7';
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
+                              onClick={() => { /* Placeholder for edit */ }}
                             >
                               ✏️
                             </ActionIcon>
@@ -720,6 +737,7 @@ function Editor({ docId = 'default-doc' }) {
                                 e.currentTarget.style.opacity = '0.7';
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
+                              onClick={() => handleDeleteComment(comment.commentId)} // Added onClick handler
                             >
                               🗑️
                             </ActionIcon>
