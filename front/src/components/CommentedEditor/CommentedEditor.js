@@ -3,10 +3,8 @@ import "@blocknote/core/fonts/inter.css";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
-import { useQuery } from '@apollo/client';
 import { createCommentPlugin, commentStyles, updateCommentPlugin } from '../../plugins/commentPlugin';
-import { useCommentActions } from '../../hooks/useCommentActions';
-import { GET_COMMENTS } from '../../graphql/comments';
+import { useCommentsUnified } from '../../hooks/useCommentsUnified';
 
 // Inject comment styles
 if (typeof document !== 'undefined' && !document.getElementById('comment-styles')) {
@@ -17,34 +15,17 @@ if (typeof document !== 'undefined' && !document.getElementById('comment-styles'
 }
 
 export default function CommentedEditor({ docId = 'default-doc' }) {
-  const [commentsMap, setCommentsMap] = useState(new Map());
   const [selectedRange, setSelectedRange] = useState(null);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const editorRef = useRef(null);
-
-  // Load comments from GraphQL
-  const { data, loading, error, refetch } = useQuery(GET_COMMENTS, {
-    variables: { docId },
-    fetchPolicy: 'cache-and-network',
-  });
-
-  // Comment actions
-  const { addComment, updateComment, deleteComment } = useCommentActions(
-    docId,
-    commentsMap,
-    setCommentsMap
-  );
-
-  // Update comments map when data changes
-  useEffect(() => {
-    if (data?.comments) {
-      const newMap = new Map();
-      data.comments.forEach(comment => {
-        newMap.set(comment.commentId, comment);
-      });
-      setCommentsMap(newMap);
-    }
-  }, [data]);
+  // Use unified comments hook for both data and actions
+  const { 
+    commentsMap, 
+    loading, 
+    addComment, 
+    updateComment, 
+    deleteComment 
+  } = useCommentsUnified(docId);
 
   // Create the editor with comment plugin
   const editor = useCreateBlockNote({
@@ -100,9 +81,7 @@ export default function CommentedEditor({ docId = 'default-doc' }) {
       alert('Failed to add comment: ' + error.message);
     }
   };
-
   if (loading) return <div>Loading comments...</div>;
-  if (error) return <div>Error loading comments: {error.message}</div>;
 
   return (
     <div style={{ position: 'relative', padding: '20px' }}>

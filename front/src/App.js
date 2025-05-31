@@ -2,7 +2,7 @@ import React from 'react';
 import { ApolloProvider } from '@apollo/client';
 import './App.css';
 import CommentedEditor from "./components/CommentedEditor/CommentedEditor";
-import apolloClient from './apolloClient';
+import apolloClient from './apolloClient.ts';
 import { useNotifications } from './hooks/useNotifications';
 
 // Demo component that includes notifications

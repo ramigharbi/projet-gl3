@@ -9,12 +9,8 @@ export const createCommentPlugin = (commentsMap) => {
     state: {
       init() {
         return DecorationSet.empty;
-      },
-      apply(tr, oldState) {
+      },      apply(tr, oldState) {
         // Update decorations when document changes
-        let decorations = oldState.map(tr.mapping, tr.doc);
-        
-        // Create decorations for each comment
         const decorationsArray = [];
         
         if (commentsMap) {
