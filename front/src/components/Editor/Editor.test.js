@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MockedProvider } from '@apollo/client/testing';
-import CommentedEditor from './CommentedEditor';
+import Editor from './Editor'; // Updated import
 import { GET_COMMENTS, ADD_COMMENT, DELETE_COMMENT } from '../../graphql/comments';
 
 // Mock BlockNote components
@@ -105,28 +105,31 @@ const mocks = [
   },
 ];
 
-describe('CommentedEditor Integration', () => {
+describe('Editor Integration', () => { // Updated describe block
   beforeEach(() => {
     // Clear any existing styles
-    const existingStyle = document.getElementById('comment-styles');
-    if (existingStyle) {
-      existingStyle.remove();
-    }
+    // const existingStyle = document.getElementById('comment-styles'); // Prefer Testing Library methods
+    // if (existingStyle) {
+    //   existingStyle.remove();
+    // }
   });
 
   test('renders editor with comments panel', async () => {
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
     expect(screen.getByTestId('blocknote-editor')).toBeInTheDocument();
-    expect(screen.getByText('Document Editor with Comments')).toBeInTheDocument();
+    expect(screen.getByText('Document Editor')).toBeInTheDocument(); // Adjusted to match new title
     
     // Wait for comments to load
     await waitFor(() => {
-      expect(screen.getByText('Comments (2)')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument(); // Title of comments section
+    });
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument(); // Badge with comment count
     });
 
     expect(screen.getByText('Test comment 1')).toBeInTheDocument();
@@ -136,11 +139,11 @@ describe('CommentedEditor Integration', () => {
   test('displays loading state initially', () => {
     render(
       <MockedProvider mocks={[]} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
-    expect(screen.getByText('Loading comments...')).toBeInTheDocument();
+    expect(screen.getByText('Loading Editor...')).toBeInTheDocument(); // Adjusted to match new loading text
   });
 
   test('handles GraphQL errors gracefully', async () => {
@@ -156,7 +159,7 @@ describe('CommentedEditor Integration', () => {
 
     render(
       <MockedProvider mocks={errorMocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
@@ -167,7 +170,7 @@ describe('CommentedEditor Integration', () => {
 
   test('shows comment form when text is selected', async () => {
     // Mock selection
-    const mockEditor = {
+    const mockEditorInstance = { // Renamed to avoid conflict with component name
       proseMirrorView: {
         state: {
           selection: { from: 5, to: 15 }
@@ -176,16 +179,19 @@ describe('CommentedEditor Integration', () => {
     };
 
     const useCreateBlockNoteMock = require('@blocknote/react').useCreateBlockNote;
-    useCreateBlockNoteMock.mockReturnValue(mockEditor);
+    useCreateBlockNoteMock.mockReturnValue(mockEditorInstance);
 
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Comments (2)')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument(); // Badge with comment count
     });
 
     // Simulate text selection by clicking the Add Comment button
@@ -199,7 +205,7 @@ describe('CommentedEditor Integration', () => {
   test('allows editing comments inline', async () => {
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
@@ -227,7 +233,7 @@ describe('CommentedEditor Integration', () => {
 
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
@@ -261,12 +267,15 @@ describe('CommentedEditor Integration', () => {
 
     render(
       <MockedProvider mocks={emptyMocks} addTypename={false}>
-        <CommentedEditor docId="empty-doc" />
+        <Editor docId="empty-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Comments (0)')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('0')).toBeInTheDocument(); // Badge with comment count
     });
 
     expect(screen.getByText(/No comments yet/)).toBeInTheDocument();
@@ -276,34 +285,36 @@ describe('CommentedEditor Integration', () => {
   test('shows comment count accurately', async () => {
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
     await waitFor(() => {
-      expect(screen.getByText('2 comments')).toBeInTheDocument();
+      expect(screen.getByText('Comments')).toBeInTheDocument(); // Adjusted, count is in a badge
     });
-
     await waitFor(() => {
-      expect(screen.getByText('Comments (2)')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument(); // Check for the badge content
     });
   });
 
   test('displays comment metadata correctly', async () => {
     render(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <CommentedEditor docId="test-doc" />
+        <Editor docId="test-doc" />{/* Updated component */}
       </MockedProvider>
     );
 
     await waitFor(() => {
       expect(screen.getByText('User 1')).toBeInTheDocument();
+      // expect(screen.getByText('User 2')).toBeInTheDocument(); // Moved to separate assertion
+    });
+    await waitFor(() => {
       expect(screen.getByText('User 2')).toBeInTheDocument();
     });
 
     // Check range display
-    expect(screen.getByText('Range: 0-10')).toBeInTheDocument();
-    expect(screen.getByText('Range: 15-25')).toBeInTheDocument();
+    expect(screen.getByText('#0-10')).toBeInTheDocument(); // Adjusted to match new badge format
+    expect(screen.getByText('#15-25')).toBeInTheDocument(); // Adjusted to match new badge format
 
     // Check formatted dates (will vary based on locale)
     expect(screen.getByText(/2025/)).toBeInTheDocument();

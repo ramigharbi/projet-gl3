@@ -109,9 +109,8 @@ export function useCommentsUnified(docId: string) {
   // Mutations
   const [addCommentMutation] = useMutation(ADD_COMMENT);
   const [updateCommentMutation] = useMutation(UPDATE_COMMENT);
-  const [deleteCommentMutation] = useMutation(DELETE_COMMENT);
-  // Local state for optimistic updates
-  const [localComments, setLocalComments] = React.useState(new Map());
+  const [deleteCommentMutation] = useMutation(DELETE_COMMENT);  // Local state for optimistic updates
+  const [localComments, setLocalComments] = React.useState(new Map<string, Comment>());
 
   // Build the final comments map from query data + subscription updates
   const commentsMap = React.useMemo(() => {
@@ -131,9 +130,8 @@ export function useCommentsUnified(docId: string) {
         map.delete(comment.commentId);
       }
     }
-    
-    // Apply local optimistic updates
-    localComments.forEach((comment, id) => {
+      // Apply local optimistic updates
+    localComments.forEach((comment: Comment, id: string) => {
       map.set(id, comment);
     });
     
@@ -162,7 +160,7 @@ export function useCommentsUnified(docId: string) {
       rangeEnd: range.end,
     };
 
-    setLocalComments(prev => new Map(prev.set(tempId, tempComment)));
+    setLocalComments((prev: Map<string, Comment>) => new Map(prev.set(tempId, tempComment)));
 
     try {
       const { data } = await addCommentMutation({
@@ -181,19 +179,16 @@ export function useCommentsUnified(docId: string) {
             },
           });
         },
-      });
-
-      // Remove temp comment from local state
-      setLocalComments(prev => {
+      });      // Remove temp comment from local state
+      setLocalComments((prev: Map<string, Comment>) => {
         const newMap = new Map(prev);
         newMap.delete(tempId);
         return newMap;
       });
 
       return data.addComment;
-    } catch (error) {
-      // Remove temp comment on error
-      setLocalComments(prev => {
+    } catch (error) {      // Remove temp comment on error
+      setLocalComments((prev: Map<string, Comment>) => {
         const newMap = new Map(prev);
         newMap.delete(tempId);
         return newMap;
@@ -217,24 +212,21 @@ export function useCommentsUnified(docId: string) {
       text: newText,
       updatedAt: new Date().toISOString(),
     };
-    setLocalComments(prev => new Map(prev.set(comment.commentId, updatedComment)));
+    setLocalComments((prev: Map<string, Comment>) => new Map(prev.set(comment.commentId, updatedComment)));
 
     try {
       const { data } = await updateCommentMutation({
         variables: { docId, commentId: comment.commentId, input },
-      });
-
-      // Remove from local state once server confirms
-      setLocalComments(prev => {
+      });      // Remove from local state once server confirms
+      setLocalComments((prev: Map<string, Comment>) => {
         const newMap = new Map(prev);
         newMap.delete(comment.commentId);
         return newMap;
       });
 
       return data.updateComment;
-    } catch (error) {
-      // Revert optimistic update on error
-      setLocalComments(prev => {
+    } catch (error) {      // Revert optimistic update on error
+      setLocalComments((prev: Map<string, Comment>) => {
         const newMap = new Map(prev);
         newMap.delete(comment.commentId);
         return newMap;
