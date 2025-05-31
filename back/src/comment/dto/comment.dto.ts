@@ -52,4 +52,7 @@ export class CommentEvent {
 
   @Field({ nullable: true })
   commentId?: string;
+
+  @Field(() => ID, { nullable: true }) // Added docId for DELETE events
+  docId?: string;
 }

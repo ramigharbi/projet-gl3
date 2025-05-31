@@ -57,20 +57,21 @@ export const DELETE_COMMENT = gql`
 
 // Subscription to listen for comment events
 export const COMMENT_EVENTS = gql`
-  subscription CommentEvent($docId: ID!) {
+  subscription CommentEvent($docId: String!) {
     commentEvent(docId: $docId) {
       type
       comment {
         commentId
         docId
-        text
         author
-        createdAt
-        updatedAt
+        text
         rangeStart
         rangeEnd
+        createdAt
+        updatedAt
       }
-      commentId
+      docId # Ensure this field is queried
+      commentId # This was present in your original file, ensure it's intended here at this level
     }
   }
 `;

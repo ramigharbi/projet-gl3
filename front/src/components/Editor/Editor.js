@@ -86,7 +86,7 @@ const theme = createTheme({
 });
 
 function Editor({ docId = 'default-doc' }) {
-  // console.log('[Editor.js] Editor rendering with docId:', docId); // Debug
+  console.log(`[Editor.js] Component rendering. Received docId: '${docId}'`); // Log received docId
   
   // ALL HOOKS MUST BE CALLED AT THE TOP LEVEL
   const editor = useCreateBlockNote({});
@@ -94,8 +94,7 @@ function Editor({ docId = 'default-doc' }) {
     commentsMap, 
     loading, 
     addComment, 
-    // updateComment, // To be implemented
-    deleteComment, // Uncommented deleteComment
+    deleteComment, 
     reload 
   } = useCommentsUnified(docId);
 
@@ -108,31 +107,14 @@ function Editor({ docId = 'default-doc' }) {
 
   // Effect to listen to selection changes in the editor
   useEffect(() => {
-    console.log("[Editor.js] Attempting to set up selection change listener (v2)."); // Updated log
     if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.on === 'function') {
-      console.log("[Editor.js] editor._tiptapEditor.on is a function. Subscribing to 'selectionUpdate'.");
 
-      const handleSelectionUpdate = ({ editor: tiptapEditor }) => { // tiptapEditor is from the event payload
-        const pmSelection = tiptapEditor.state.selection; // Prosemirror's selection from Tiptap state
-
-        console.log("[Editor.js] Tiptap 'selectionUpdate' event triggered.");
-        try {
-          // Avoid logging the full tiptapEditor object here as it can be very large and circular
-          // console.log("[Editor.js] Tiptap Editor (from event):", tiptapEditor);
-          console.log("[Editor.js] Prosemirror Selection (from Tiptap event):", JSON.stringify(pmSelection));
-        } catch (e) {
-          console.log("[Editor.js] Prosemirror Selection (from Tiptap event):", pmSelection);
-          console.error("[Editor.js] Error stringifying selection object:", e);
-        }
+      const handleSelectionUpdate = ({ editor: tiptapEditor }) => { 
+        const pmSelection = tiptapEditor.state.selection;
 
         if (pmSelection && typeof pmSelection.from === 'number' && typeof pmSelection.to === 'number' && pmSelection.from !== pmSelection.to) {
-          console.log("[Editor.js] Valid Prosemirror selection range detected:", { start: pmSelection.from, end: pmSelection.to });
           setSelectedRange({ start: pmSelection.from, end: pmSelection.to });
         } else {
-          console.log("[Editor.js] No valid Prosemirror selection range (or selection is empty). Clearing selectedRange.");
-          if (pmSelection) {
-            console.log(`[Editor.js] Reason: from=${pmSelection.from}, to=${pmSelection.to}`);
-          }
           setSelectedRange(null);
         }
       };
@@ -140,23 +122,15 @@ function Editor({ docId = 'default-doc' }) {
       editor._tiptapEditor.on('selectionUpdate', handleSelectionUpdate);
 
       return () => {
-        console.log("[Editor.js] Cleaning up 'selectionUpdate' listener.");
-        // Ensure editor and _tiptapEditor still exist and off is a function before calling it
         if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.off === 'function') {
           editor._tiptapEditor.off('selectionUpdate', handleSelectionUpdate);
         }
       };
-    } else {
-      console.log("[Editor.js] Could not set up 'selectionUpdate' listener. Conditions not met:");
-      if (!editor) console.log(" - editor is not available");
-      else if (!editor._tiptapEditor) console.log(" - editor._tiptapEditor is not available");
-      else if (typeof editor._tiptapEditor.on !== 'function') console.log(" - editor._tiptapEditor.on is not a function");
-    }
-  }, [editor]); // editor is the dependency
+    } 
+  }, [editor]); 
   
   // Conditional return must be AFTER all hook calls
   if (!editor) {
-    // console.log('[Editor.js] Editor instance not yet available from useCreateBlockNote.'); // Debug
     return (
       <MantineProvider theme={theme}>
         <Box style={{ 
@@ -212,7 +186,6 @@ function Editor({ docId = 'default-doc' }) {
       </MantineProvider>
     );
   }
-  // console.log('[Editor.js] Editor instance available. Comments loading:', loading); // Debug
 
   const handleAddComment = async () => {
     if (!selectedRange || !commentText.trim() || !authorName.trim()) {
@@ -714,7 +687,7 @@ function Editor({ docId = 'default-doc' }) {
                                 e.currentTarget.style.opacity = '0.7';
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
-                              onClick={() => { /* Placeholder for edit */ }}
+                              onClick={() => { /* Placeholder for edit */ }} // REVERTED: Removed handleEditComment call
                             >
                               ✏️
                             </ActionIcon>
@@ -737,7 +710,7 @@ function Editor({ docId = 'default-doc' }) {
                                 e.currentTarget.style.opacity = '0.7';
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
-                              onClick={() => handleDeleteComment(comment.commentId)} // Added onClick handler
+                              onClick={() => handleDeleteComment(comment.commentId)}
                             >
                               🗑️
                             </ActionIcon>

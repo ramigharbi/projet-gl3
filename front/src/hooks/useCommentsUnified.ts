@@ -3,7 +3,7 @@ import { gql, useQuery, useSubscription, useMutation } from '@apollo/client';
 
 // GraphQL Queries and Subscriptions
 export const GET_COMMENTS = gql`
-  query GetComments($docId: ID!) {
+  query GetComments($docId: String!) { # Changed ID! to String!
     comments(docId: $docId) {
       commentId
       docId
@@ -18,7 +18,7 @@ export const GET_COMMENTS = gql`
 `;
 
 export const COMMENT_EVENTS = gql`
-  subscription CommentEvent($docId: ID!) {
+  subscription CommentEvent($docId: String!) { # Already String!
     commentEvent(docId: $docId) {
       type
       comment {
@@ -31,12 +31,13 @@ export const COMMENT_EVENTS = gql`
         createdAt
         updatedAt
       }
+      docId # Added docId here as per backend DTO
     }
   }
 `;
 
 export const ADD_COMMENT = gql`
-  mutation AddComment($docId: ID!, $input: CommentInput!) {
+  mutation AddComment($docId: String!, $input: CommentInput!) { # Changed ID! to String!
     addComment(docId: $docId, input: $input) {
       commentId
       docId
@@ -51,7 +52,7 @@ export const ADD_COMMENT = gql`
 `;
 
 export const UPDATE_COMMENT = gql`
-  mutation UpdateComment($docId: ID!, $commentId: ID!, $input: CommentInput!) {
+  mutation UpdateComment($docId: String!, $commentId: ID!, $input: CommentInput!) { # Changed ID! to String!
     updateComment(docId: $docId, commentId: $commentId, input: $input) {
       commentId
       docId
@@ -66,7 +67,7 @@ export const UPDATE_COMMENT = gql`
 `;
 
 export const DELETE_COMMENT = gql`
-  mutation DeleteComment($docId: ID!, $commentId: ID!) {
+  mutation DeleteComment($docId: String!, $commentId: ID!) { # Changed ID! to String!
     deleteComment(docId: $docId, commentId: $commentId)
   }
 `;
@@ -93,50 +94,126 @@ interface Range {
  */
 export function useCommentsUnified(docId: string) {
   // Query for initial comments
-  const { data, loading, refetch } = useQuery(GET_COMMENTS, { 
+  const { data, loading, refetch, client } = useQuery(GET_COMMENTS, {
     variables: { docId },
-    fetchPolicy: 'cache-and-network'
+    fetchPolicy: 'cache-and-network',
+    // notifyOnNetworkStatusChange: true, // Might be useful for debugging loading states
   });
 
   // Subscribe to real-time comment events
-  const { data: subData } = useSubscription(COMMENT_EVENTS, { 
+  const { data: subData } = useSubscription(COMMENT_EVENTS, {
     variables: { docId },
     onError: (error) => {
-      console.warn('Comment subscription error:', error);
+      console.warn(`[useCommentsUnified] (${docId}) Comment subscription error:`, error);
     }
   });
 
   // Mutations
   const [addCommentMutation] = useMutation(ADD_COMMENT);
   const [updateCommentMutation] = useMutation(UPDATE_COMMENT);
-  const [deleteCommentMutation] = useMutation(DELETE_COMMENT);  // Local state for optimistic updates
-  const [localComments, setLocalComments] = React.useState(new Map<string, Comment>());
+  const [deleteCommentMutation] = useMutation(DELETE_COMMENT);
+  // REMOVE Local state for optimistic updates
+  // const [localComments, setLocalComments] = React.useState(new Map<string, Comment>());
 
-  // Build the final comments map from query data + subscription updates
+  // Effect to update Apollo Cache based on subscription events
+  React.useEffect(() => {
+    if (subData?.commentEvent && client) {
+      // Enhanced logging for incoming subscription data
+      console.log(`[useCommentsUnified] (${docId}) RAW SUB DATA RECEIVED:`, JSON.stringify(subData));
+      
+      const { type, comment: incomingComment, docId: eventDocId, commentId: eventTopLevelCommentId } = subData.commentEvent;
+      console.log(`[useCommentsUnified] (${docId}) Subscription event processed. Type: ${type}, Comment ID (from comment object): ${incomingComment?.commentId}, Comment ID (from event top level): ${eventTopLevelCommentId}, Event's DocID: ${eventDocId}`);
+
+      // Ensure incomingComment is not null before proceeding
+      if (!incomingComment) {
+        console.warn(`[useCommentsUnified] (${docId}) Received subscription event with null comment object. Type: ${type}, Event DocID: ${eventDocId}`);
+        return;
+      }
+      
+      // Read current comments from cache
+      let existingQueryData: { comments: Comment[] } | null = null;
+      try {
+        existingQueryData = client.readQuery({
+          query: GET_COMMENTS,
+          variables: { docId }, // Ensure this docId matches the event's scope
+        });
+        console.log(`[useCommentsUnified] (${docId}) Existing cache data before sub update. Count: ${existingQueryData?.comments?.length || 0}`, existingQueryData?.comments ? JSON.stringify(existingQueryData.comments) : 'No existing comments');
+      } catch (e) {
+        console.warn(`[useCommentsUnified] (${docId}) Could not read query from cache before subscription update (this might be normal if cache is empty):`, e);
+      }
+
+      let newCommentsArray: Comment[] = existingQueryData?.comments ? [...existingQueryData.comments] : [];
+      let changed = false;
+
+      if (type === 'ADD') {
+        if (!newCommentsArray.find(c => c.commentId === incomingComment.commentId)) {
+          newCommentsArray.push(incomingComment);
+          changed = true;
+          console.log(`[useCommentsUnified] (${docId}) Cache Update: ADDING comment ${incomingComment.commentId}`);
+        } else {
+          console.log(`[useCommentsUnified] (${docId}) Cache Info: ADD event for existing comment ${incomingComment.commentId} (likely echo or already processed). No change to array.`);
+        }
+      } else if (type === 'UPDATE') {
+        const index = newCommentsArray.findIndex(c => c.commentId === incomingComment.commentId);
+        if (index !== -1) {
+          if (JSON.stringify(newCommentsArray[index]) !== JSON.stringify(incomingComment)) {
+            newCommentsArray[index] = incomingComment;
+            changed = true;
+            console.log(`[useCommentsUnified] (${docId}) Cache Update: UPDATING comment ${incomingComment.commentId}`);
+          } else {
+            console.log(`[useCommentsUnified] (${docId}) Cache Info: UPDATE event for comment ${incomingComment.commentId} with no actual data change. No change to array.`);
+          }
+        } else {
+          // If an UPDATE event comes for a comment not in cache, it's effectively an ADD.
+          newCommentsArray.push(incomingComment);
+          changed = true;
+          console.log(`[useCommentsUnified] (${docId}) Cache Update: UPDATE event for non-existing comment ${incomingComment.commentId}, ADDING it.`);
+        }
+      } else if (type === 'DELETE') {
+        const initialLength = newCommentsArray.length;
+        newCommentsArray = newCommentsArray.filter(
+          c => c.commentId !== incomingComment.commentId
+        );
+        if (newCommentsArray.length !== initialLength) {
+          changed = true;
+          console.log(`[useCommentsUnified] (${docId}) Cache Update: DELETING comment ${incomingComment.commentId}`);
+        } else {
+           console.log(`[useCommentsUnified] (${docId}) Cache Info: DELETE event for non-existing comment ${incomingComment.commentId}. No change to array.`);
+        }
+      }
+
+      if (changed) {
+        console.log(`[useCommentsUnified] (${docId}) Cache: Writing updated comments. New count: ${newCommentsArray.length}`, JSON.stringify(newCommentsArray));
+        client.writeQuery({
+          query: GET_COMMENTS,
+          variables: { docId }, // Ensure this docId matches
+          data: { comments: newCommentsArray },
+        });
+        // Log cache state after write
+        try {
+          const updatedCacheData: { comments: Comment[] } | null = client.readQuery({ query: GET_COMMENTS, variables: { docId } });
+          console.log(`[useCommentsUnified] (${docId}) Cache data after write:`, updatedCacheData ? JSON.stringify(updatedCacheData.comments) : 'Cache empty after write');
+        } catch (e) {
+          console.warn(`[useCommentsUnified] (${docId}) Could not read cache after write:`, e);
+        }
+      } else {
+        console.log(`[useCommentsUnified] (${docId}) No effective change from subscription event, not writing to cache.`);
+      }
+    }
+  }, [subData, docId, client]); 
+
+  // Build the final comments map from query data
   const commentsMap = React.useMemo(() => {
+    console.log(`[useCommentsUnified] (${docId}) Recomputing commentsMap. Current 'data.comments' count from useQuery: ${data?.comments?.length || 0}.`);
     const map = new Map<string, Comment>();
     
-    // Start with query data
     if (data?.comments) {
       data.comments.forEach((c: Comment) => map.set(c.commentId, c));
     }
     
-    // Apply subscription updates
-    if (subData?.commentEvent) {
-      const { type, comment } = subData.commentEvent;
-      if (type === 'ADD' || type === 'UPDATE') {
-        map.set(comment.commentId, comment);
-      } else if (type === 'DELETE') {
-        map.delete(comment.commentId);
-      }
-    }
-      // Apply local optimistic updates
-    localComments.forEach((comment: Comment, id: string) => {
-      map.set(id, comment);
-    });
-    
+    console.log(`[useCommentsUnified] (${docId}) Final commentsMap computed. Size: ${map.size}`, Array.from(map.values()));
     return map;
-  }, [data, subData, localComments]);
+  }, [data, docId]); 
 
   // Action methods
   const addComment = async (range: Range, text: string, author: string = 'Anonymous') => {
@@ -147,53 +224,54 @@ export function useCommentsUnified(docId: string) {
       rangeEnd: range.end,
     };
 
-    // Optimistic update
     const tempId = `temp-${Date.now()}`;
-    const tempComment: Comment = {
-      commentId: tempId,
-      docId,
-      text,
-      author,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      rangeStart: range.start,
-      rangeEnd: range.end,
-    };
-
-    setLocalComments((prev: Map<string, Comment>) => new Map(prev.set(tempId, tempComment)));
 
     try {
-      const { data } = await addCommentMutation({
-        variables: { docId, input },        update: (cache, { data: { addComment } }) => {
-          // Update the cache with the real comment
-          const existingComments: any = cache.readQuery({
-            query: GET_COMMENTS,
-            variables: { docId },
-          });
+      const { data: addCommentData } = await addCommentMutation({
+        variables: { docId, input },
+        optimisticResponse: {
+          addComment: {
+            __typename: 'Comment', 
+            commentId: tempId,
+            docId,
+            author: input.author,
+            text: input.text,
+            rangeStart: input.rangeStart,
+            rangeEnd: input.rangeEnd,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        update: (cache, { data: mutationResult }) => {
+          if (!mutationResult || !mutationResult.addComment) return;
+          const newComment = mutationResult.addComment;
+          const queryOptions = { query: GET_COMMENTS, variables: { docId } };
+          
+          const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
+          let updatedComments = existingCommentsData?.comments ? [...existingCommentsData.comments] : [];
 
+          if (newComment.commentId !== tempId) {
+            updatedComments = updatedComments.filter(c => c.commentId !== tempId);
+          }
+
+          const commentIndex = updatedComments.findIndex(c => c.commentId === newComment.commentId);
+          if (commentIndex > -1) {
+            updatedComments[commentIndex] = newComment; 
+          } else {
+            updatedComments.push(newComment); 
+          }
+          
           cache.writeQuery({
-            query: GET_COMMENTS,
-            variables: { docId },
-            data: {
-              comments: [...(existingComments?.comments || []), addComment],
-            },
+            ...queryOptions,
+            data: { comments: updatedComments },
           });
         },
-      });      // Remove temp comment from local state
-      setLocalComments((prev: Map<string, Comment>) => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
       });
-
-      return data.addComment;
-    } catch (error) {      // Remove temp comment on error
-      setLocalComments((prev: Map<string, Comment>) => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-      console.error('Failed to add comment:', error);
+      
+      console.log(`[useCommentsUnified] (${docId}) Add comment mutation successful. Result commentId: ${addCommentData?.addComment?.commentId}`);
+      return addCommentData.addComment;
+    } catch (error) {
+      console.error(`[useCommentsUnified] (${docId}) Failed to add comment:`, error);
       throw error;
     }
   };
@@ -201,64 +279,80 @@ export function useCommentsUnified(docId: string) {
   const updateComment = async (comment: Comment, newText: string) => {
     const input = {
       text: newText,
-      author: comment.author,
+      author: comment.author, 
       rangeStart: comment.rangeStart,
       rangeEnd: comment.rangeEnd,
     };
 
-    // Optimistic update
-    const updatedComment = {
-      ...comment,
-      text: newText,
-      updatedAt: new Date().toISOString(),
-    };
-    setLocalComments((prev: Map<string, Comment>) => new Map(prev.set(comment.commentId, updatedComment)));
-
     try {
-      const { data } = await updateCommentMutation({
+      const { data: updateResult } = await updateCommentMutation({
         variables: { docId, commentId: comment.commentId, input },
-      });      // Remove from local state once server confirms
-      setLocalComments((prev: Map<string, Comment>) => {
-        const newMap = new Map(prev);
-        newMap.delete(comment.commentId);
-        return newMap;
-      });
+        optimisticResponse: {
+          updateComment: {
+            __typename: 'Comment',
+            ...comment, 
+            text: newText, 
+            updatedAt: new Date().toISOString(), 
+          },
+        },
+        update: (cache, { data: mutationUpdateResult }) => {
+          if (!mutationUpdateResult || !mutationUpdateResult.updateComment) return;
+          const updatedCommentFromServer = mutationUpdateResult.updateComment;
+          
+          const queryOptions = { query: GET_COMMENTS, variables: { docId } };
+          const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
 
-      return data.updateComment;
-    } catch (error) {      // Revert optimistic update on error
-      setLocalComments((prev: Map<string, Comment>) => {
-        const newMap = new Map(prev);
-        newMap.delete(comment.commentId);
-        return newMap;
+          if (existingCommentsData?.comments) {
+            cache.writeQuery({
+              ...queryOptions,
+              data: {
+                comments: existingCommentsData.comments.map(c =>
+                  c.commentId === updatedCommentFromServer.commentId ? updatedCommentFromServer : c
+                ),
+              },
+            });
+          }
+        },
       });
-      console.error('Failed to update comment:', error);
+      
+      console.log(`[useCommentsUnified] (${docId}) Update comment mutation successful for commentId: ${updateResult?.updateComment?.commentId}`);
+      return updateResult.updateComment;
+    } catch (error) {
+      console.error(`[useCommentsUnified] (${docId}) Failed to update comment: ${comment.commentId}`, error);
       throw error;
     }
   };
 
   const deleteComment = async (commentId: string) => {
     try {
-      const { data } = await deleteCommentMutation({
-        variables: { docId, commentId },        update: (cache) => {
-          // Update the cache
-          const existingComments: any = cache.readQuery({
-            query: GET_COMMENTS,
-            variables: { docId },
-          });
+      const { data: deleteResult } = await deleteCommentMutation({
+        variables: { docId, commentId },
+        optimisticResponse: {
+          deleteComment: commentId, 
+        },
+        update: (cache, { data: mutationResult }) => {
+          const deletedId = mutationResult?.deleteComment;
+          if (!deletedId) {
+            console.warn(`[useCommentsUnified] (${docId}) deleteComment mutation result did not return a commentId. Optimistic deletion might be the only cache update.`);
+          }
 
-          cache.writeQuery({
-            query: GET_COMMENTS,
-            variables: { docId },
-            data: {
-              comments: existingComments?.comments?.filter((c: Comment) => c.commentId !== commentId) || [],
-            },
-          });
+          const queryOptions = { query: GET_COMMENTS, variables: { docId } };
+          const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
+
+          if (existingCommentsData?.comments) {
+            cache.writeQuery({
+              ...queryOptions,
+              data: {
+                comments: existingCommentsData.comments.filter((c: Comment) => c.commentId !== (deletedId || commentId)),
+              },
+            });
+          }
         },
       });
-
-      return data.deleteComment;
+      console.log(`[useCommentsUnified] (${docId}) Delete comment mutation successful for commentId: ${deleteResult?.deleteComment || commentId}`);
+      return deleteResult.deleteComment;
     } catch (error) {
-      console.error('Failed to delete comment:', error);
+      console.error(`[useCommentsUnified] (${docId}) Failed to delete comment: ${commentId}`, error);
       throw error;
     }
   };
