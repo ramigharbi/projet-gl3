@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AuthForm from './AuthForm';
 import './App.css';
+import BlockNoteEditor from "./components/BlockNoteEditor/BlockNoteEditor";
 
 function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('token'));
