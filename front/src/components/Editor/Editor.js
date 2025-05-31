@@ -1,5 +1,4 @@
-// filepath: c:\\Users\\Dali\\Desktop\\projet-gl3\\front\\src\\components\\Editor\\Editor.js
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
@@ -86,39 +85,6 @@ const theme = createTheme({
   },
 });
 
-// Helper function (placeholder) - this needs to be properly implemented based on BlockNote's API
-const convertToStorableRange = (selection) => {
-  // This is highly dependent on how BlockNote represents selection
-  // and how you want to store ranges (e.g., character offsets, block IDs + offsets).
-
-  // Attempt to get character offsets if available (this is a common approach)
-  // The actual properties might differ in BlockNote's API
-  if (selection && typeof selection.from === 'number' && typeof selection.to === 'number') {
-    return {
-      start: selection.from,
-      end: selection.to,
-      // text: editor.getSelectedText() // Potentially useful for context, if editor.getSelectedText() exists
-    };
-  }
-
-  // Fallback or more complex logic if BlockNote uses block-based selections primarily
-  if (selection && selection.blocks && selection.blocks.length > 0) {
-    // This part is a placeholder and needs to be adapted based on BlockNote's specific API
-    // for selections spanning blocks or within a single block.
-    // It might involve getting the ID of the first and last block,
-    // and offsets within those blocks.
-    // console.warn("[Editor.js] convertToStorableRange: Using simplified block-based range. Review for accuracy."); // Debug
-    return {
-      // blockId: selection.blocks[0].id, // Example
-      start: 0, // Placeholder - needs to be character offset or similar
-      end: 10,  // Placeholder - needs to be character offset or similar
-    };
-  }
-
-  // console.warn("[Editor.js] convertToStorableRange: Could not determine a storable range from selection:", selection); // Debug
-  return null;
-};
-
 function Editor({ docId = 'default-doc' }) {
   // console.log('[Editor.js] Editor rendering with docId:', docId); // Debug
   
@@ -142,22 +108,51 @@ function Editor({ docId = 'default-doc' }) {
 
   // Effect to listen to selection changes in the editor
   useEffect(() => {
-    if (editor && editor.events && typeof editor.events.onSelectionChange === 'function') {
-      const unsubscribe = editor.events.onSelectionChange(() => {
-        const selection = editor.getSelection();
-        if (selection) {
-          // console.log("[Editor.js] Editor selection changed:", selection); // Debug
-          // Attempt to convert and set the range
-          const storableRange = convertToStorableRange(selection); // Use the helper
-          setSelectedRange(storableRange); 
-          // console.log("[Editor.js] Storable range set:", storableRange); // Debug
-        } else {
-          setSelectedRange(null); // Clear range if selection is lost
+    console.log("[Editor.js] Attempting to set up selection change listener (v2)."); // Updated log
+    if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.on === 'function') {
+      console.log("[Editor.js] editor._tiptapEditor.on is a function. Subscribing to 'selectionUpdate'.");
+
+      const handleSelectionUpdate = ({ editor: tiptapEditor }) => { // tiptapEditor is from the event payload
+        const pmSelection = tiptapEditor.state.selection; // Prosemirror's selection from Tiptap state
+
+        console.log("[Editor.js] Tiptap 'selectionUpdate' event triggered.");
+        try {
+          // Avoid logging the full tiptapEditor object here as it can be very large and circular
+          // console.log("[Editor.js] Tiptap Editor (from event):", tiptapEditor);
+          console.log("[Editor.js] Prosemirror Selection (from Tiptap event):", JSON.stringify(pmSelection));
+        } catch (e) {
+          console.log("[Editor.js] Prosemirror Selection (from Tiptap event):", pmSelection);
+          console.error("[Editor.js] Error stringifying selection object:", e);
         }
-      });
-      return () => unsubscribe();
+
+        if (pmSelection && typeof pmSelection.from === 'number' && typeof pmSelection.to === 'number' && pmSelection.from !== pmSelection.to) {
+          console.log("[Editor.js] Valid Prosemirror selection range detected:", { start: pmSelection.from, end: pmSelection.to });
+          setSelectedRange({ start: pmSelection.from, end: pmSelection.to });
+        } else {
+          console.log("[Editor.js] No valid Prosemirror selection range (or selection is empty). Clearing selectedRange.");
+          if (pmSelection) {
+            console.log(`[Editor.js] Reason: from=${pmSelection.from}, to=${pmSelection.to}`);
+          }
+          setSelectedRange(null);
+        }
+      };
+
+      editor._tiptapEditor.on('selectionUpdate', handleSelectionUpdate);
+
+      return () => {
+        console.log("[Editor.js] Cleaning up 'selectionUpdate' listener.");
+        // Ensure editor and _tiptapEditor still exist and off is a function before calling it
+        if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.off === 'function') {
+          editor._tiptapEditor.off('selectionUpdate', handleSelectionUpdate);
+        }
+      };
+    } else {
+      console.log("[Editor.js] Could not set up 'selectionUpdate' listener. Conditions not met:");
+      if (!editor) console.log(" - editor is not available");
+      else if (!editor._tiptapEditor) console.log(" - editor._tiptapEditor is not available");
+      else if (typeof editor._tiptapEditor.on !== 'function') console.log(" - editor._tiptapEditor.on is not a function");
     }
-  }, [editor]); // setSelectedRange is stable, editor is the dependency
+  }, [editor]); // editor is the dependency
   
   // Conditional return must be AFTER all hook calls
   if (!editor) {
@@ -220,14 +215,20 @@ function Editor({ docId = 'default-doc' }) {
   // console.log('[Editor.js] Editor instance available. Comments loading:', loading); // Debug
 
   const handleAddComment = async () => {
-    if (!selectedRange || !commentText.trim()) {
-      alert("Please select text that can be commented on and enter a comment.");
+    if (!selectedRange || !commentText.trim() || !authorName.trim()) {
+      alert("Please select text that can be commented on, and enter both a comment and your name.");
       return;
+    }
+    // Additional check for range validity, though useEffect should handle this
+    if (typeof selectedRange.start !== 'number' || typeof selectedRange.end !== 'number' || selectedRange.start === selectedRange.end) {
+        alert("Invalid text selection range. Please select a non-empty text portion.");
+        return;
     }
     try {
       await addComment(selectedRange, commentText, authorName);
       setCommentText('');
-      setSelectedRange(null); // Clear selection after commenting
+      // Optionally, you might want to keep the selection or clear it.
+      // setSelectedRange(null); // Clear selection after commenting - uncomment if desired
       // console.log("[Editor.js] Comment added for range:", selectedRange); // Debug
     } catch (error) {
       console.error("[Editor.js] Failed to add comment:", error);
