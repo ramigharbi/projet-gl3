@@ -357,7 +357,7 @@ export function useCommentsUnified(docId: string) {
 
   return {
     loading,
-    comments: commentsMap,
+    commentsMap,
     refetchComments: refetch,
     addComment,
     updateComment,
