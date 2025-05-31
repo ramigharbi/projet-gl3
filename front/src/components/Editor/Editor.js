@@ -88,7 +88,7 @@ const theme = createTheme({
 function Editor({ docId = 'default-doc' }) {
   console.log(`[Editor.js] Component rendering. Received docId: '${docId}'`); // Log received docId
   
-  // ALL HOOKS MUST BE CALLED AT THE TOP LEVEL
+  // ALL HOOKS MUST BE CALLED AT THE TOP LEVE
   const editor = useCreateBlockNote({});
   const { 
     commentsMap, 
@@ -103,7 +103,13 @@ function Editor({ docId = 'default-doc' }) {
   const [authorName, setAuthorName] = useState('User');
   
   // Memoize comments array for display - moved before conditional return
-  const commentsArray = useMemo(() => Array.from(commentsMap.values()), [commentsMap]);
+  const commentsArray = useMemo(() => {
+    if (!commentsMap) return [];
+    if (typeof commentsMap.values !== 'function') return [];
+    const arr = Array.from(commentsMap.values());
+    console.log('[Editor.js] DEBUG commentsArray:', arr);
+    return arr;
+  }, [commentsMap]);
 
   // Effect to listen to selection changes in the editor
   useEffect(() => {
@@ -204,8 +210,17 @@ function Editor({ docId = 'default-doc' }) {
       // setSelectedRange(null); // Clear selection after commenting - uncomment if desired
       // console.log("[Editor.js] Comment added for range:", selectedRange); // Debug
     } catch (error) {
-      console.error("[Editor.js] Failed to add comment:", error);
-      alert("Failed to add comment.");
+      // Enhanced error logging for Apollo/GraphQL errors
+      if (error && error.graphQLErrors) {
+        console.error("[Editor.js] GraphQL Errors:", error.graphQLErrors,error);
+        alert("Failed to add comment: " + error.graphQLErrors.map(e => e.message).join("; "));
+      } else if (error && error.message) {
+        console.error("[Editor.js] Error message:", error.message, error);
+        alert("Failed to add comment: " + error.message);
+      } else {
+        console.error("[Editor.js] Unknown error:", error);
+        alert("Failed to add comment. See console for details.");
+      }
     }
   };
 
@@ -572,150 +587,9 @@ function Editor({ docId = 'default-doc' }) {
                     duration={300}
                     timingFunction="ease"
                   >
-                    {(styles) => (                      <Paper 
-                        withBorder 
-                        p="lg" 
-                        radius="lg" 
-                        shadow="md"
-                        className="comment-card"
-                        style={{
-                          ...styles,
-                          background: index % 2 === 0 
-                            ? 'linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8))' 
-                            : 'linear-gradient(145deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05))',
-                          borderColor: index % 2 === 0 ? 'rgba(226, 232, 240, 0.8)' : 'rgba(102, 126, 234, 0.2)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          animationDelay: `${index * 0.1}s`,
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '4px',
-                            height: '100%',
-                            background: index % 2 === 0 
-                              ? 'linear-gradient(180deg, #667eea, #764ba2)' 
-                              : 'linear-gradient(180deg, #f093fb, #f5576c)',
-                            borderRadius: '0 2px 2px 0'
-                          }
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                          e.currentTarget.style.boxShadow = '0 20px 40px rgba(102, 126, 234, 0.15)';
-                          e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.07)';
-                          e.currentTarget.style.borderColor = index % 2 === 0 ? 'rgba(226, 232, 240, 0.8)' : 'rgba(102, 126, 234, 0.2)';
-                        }}
-                      >
-                        <Group justify="space-between" align="flex-start" mb="md">
-                          <Group align="center" gap="sm">
-                            <Avatar
-                              size="sm"
-                              radius="xl"
-                              style={{
-                                background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                                color: 'white',
-                                fontWeight: 700,
-                                fontSize: '12px'
-                              }}
-                            >
-                              {comment.author?.charAt(0)?.toUpperCase() || '?'}
-                            </Avatar>
-                            <Badge 
-                              variant="light" 
-                              color="brand" 
-                              size="sm"
-                              style={{
-                                textTransform: 'none',
-                                fontWeight: 600
-                              }}
-                            >
-                              {comment.author}
-                            </Badge>
-                          </Group>
-                          <Tooltip 
-                            label={`Text range: ${comment.rangeStart} to ${comment.rangeEnd}`}
-                            position="top"
-                            withArrow
-                          >
-                            <Badge 
-                              variant="outline" 
-                              color="gray" 
-                              size="xs"
-                              style={{
-                                fontFamily: 'monospace',
-                                fontSize: '10px'
-                              }}
-                            >
-                              #{comment.rangeStart}-{comment.rangeEnd}
-                            </Badge>
-                          </Tooltip>
-                        </Group>
-                        <Text 
-                          size="sm" 
-                          style={{ 
-                            lineHeight: 1.6,
-                            color: '#374151',
-                            fontWeight: 500,
-                            paddingLeft: '12px'
-                          }}
-                        >
-                          {comment.text}
-                        </Text>
-                          <Group justify="flex-end" mt="sm" gap="xs">
-                          <Tooltip label="Edit comment" position="top" withArrow>
-                            <ActionIcon
-                              variant="subtle"
-                              color="brand"
-                              size="sm"
-                              radius="xl"
-                              style={{ 
-                                opacity: 0.7,
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '0.7';
-                                e.currentTarget.style.transform = 'scale(1)';
-                              }}
-                              onClick={() => { /* Placeholder for edit */ }} // REVERTED: Removed handleEditComment call
-                            >
-                              ✏️
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Delete comment" position="top" withArrow>
-                            <ActionIcon
-                              variant="subtle"
-                              color="red"
-                              size="sm"
-                              radius="xl"
-                              style={{ 
-                                opacity: 0.7,
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '0.7';
-                                e.currentTarget.style.transform = 'scale(1)';
-                              }}
-                              onClick={() => handleDeleteComment(comment.commentId)}
-                            >
-                              🗑️
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
+                    {(styles) => (
+                      <Paper key={comment.commentId} style={styles}>
+                        {comment.text}
                       </Paper>
                     )}
                   </Transition>

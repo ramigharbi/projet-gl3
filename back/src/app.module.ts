@@ -12,7 +12,6 @@ import { NotificationModule } from './notification/notification.module';
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
-      installSubscriptionHandlers: true,
       subscriptions: {
         'graphql-ws': true,
         'subscriptions-transport-ws': true,

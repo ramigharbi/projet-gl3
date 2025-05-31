@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 
 // Query to get all comments for a document
 export const GET_COMMENTS = gql`
-  query GetComments($docId: ID!) {
+  query GetComments($docId: String!) {
     comments(docId: $docId) {
       commentId
       docId
@@ -18,39 +18,45 @@ export const GET_COMMENTS = gql`
 
 // Mutation to add a new comment
 export const ADD_COMMENT = gql`
-  mutation AddComment($docId: ID!, $input: CommentInput!) {
+  mutation AddComment($docId: String!, $input: CommentInput!) {
     addComment(docId: $docId, input: $input) {
-      commentId
-      docId
-      text
-      author
-      createdAt
-      updatedAt
-      rangeStart
-      rangeEnd
+      comment {
+        commentId
+        docId
+        text
+        author
+        createdAt
+        updatedAt
+        rangeStart
+        rangeEnd
+      }
+      message
     }
   }
 `;
 
 // Mutation to update an existing comment
 export const UPDATE_COMMENT = gql`
-  mutation UpdateComment($docId: ID!, $commentId: ID!, $input: CommentInput!) {
+  mutation UpdateComment($docId: String!, $commentId: String!, $input: CommentInput!) {
     updateComment(docId: $docId, commentId: $commentId, input: $input) {
-      commentId
-      docId
-      text
-      author
-      createdAt
-      updatedAt
-      rangeStart
-      rangeEnd
+      comment {
+        commentId
+        docId
+        text
+        author
+        createdAt
+        updatedAt
+        rangeStart
+        rangeEnd
+      }
+      message
     }
   }
 `;
 
 // Mutation to delete a comment
 export const DELETE_COMMENT = gql`
-  mutation DeleteComment($docId: ID!, $commentId: ID!) {
+  mutation DeleteComment($docId: String!, $commentId: String!) {
     deleteComment(docId: $docId, commentId: $commentId)
   }
 `;
@@ -70,8 +76,8 @@ export const COMMENT_EVENTS = gql`
         createdAt
         updatedAt
       }
-      docId # Ensure this field is queried
-      commentId # This was present in your original file, ensure it's intended here at this level
+      docId
+      commentId
     }
   }
 `;

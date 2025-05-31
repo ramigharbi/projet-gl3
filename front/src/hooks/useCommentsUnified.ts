@@ -37,16 +37,19 @@ export const COMMENT_EVENTS = gql`
 `;
 
 export const ADD_COMMENT = gql`
-  mutation AddComment($docId: String!, $input: CommentInput!) { # Changed ID! to String!
+  mutation AddComment($docId: String!, $input: CommentInput!) {
     addComment(docId: $docId, input: $input) {
-      commentId
-      docId
-      text
-      author
-      createdAt
-      updatedAt
-      rangeStart
-      rangeEnd
+      comment {
+        commentId
+        docId
+        text
+        author
+        createdAt
+        updatedAt
+        rangeStart
+        rangeEnd
+      }
+      message
     }
   }
 `;
@@ -231,22 +234,25 @@ export function useCommentsUnified(docId: string) {
         variables: { docId, input },
         optimisticResponse: {
           addComment: {
-            __typename: 'Comment', 
-            commentId: tempId,
-            docId,
-            author: input.author,
-            text: input.text,
-            rangeStart: input.rangeStart,
-            rangeEnd: input.rangeEnd,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            __typename: 'CommentPayload',
+            comment: {
+              __typename: 'Comment',
+              commentId: tempId,
+              docId,
+              author: input.author,
+              text: input.text,
+              rangeStart: input.rangeStart,
+              rangeEnd: input.rangeEnd,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            message: 'Optimistic add',
           },
         },
         update: (cache, { data: mutationResult }) => {
-          if (!mutationResult || !mutationResult.addComment) return;
-          const newComment = mutationResult.addComment;
+          if (!mutationResult || !mutationResult.addComment || !mutationResult.addComment.comment) return;
+          const newComment = mutationResult.addComment.comment;
           const queryOptions = { query: GET_COMMENTS, variables: { docId } };
-          
           const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
           let updatedComments = existingCommentsData?.comments ? [...existingCommentsData.comments] : [];
 
@@ -256,111 +262,103 @@ export function useCommentsUnified(docId: string) {
 
           const commentIndex = updatedComments.findIndex(c => c.commentId === newComment.commentId);
           if (commentIndex > -1) {
-            updatedComments[commentIndex] = newComment; 
+            updatedComments[commentIndex] = newComment;
           } else {
-            updatedComments.push(newComment); 
+            updatedComments.push(newComment);
           }
-          
           cache.writeQuery({
             ...queryOptions,
             data: { comments: updatedComments },
           });
         },
       });
-      
-      console.log(`[useCommentsUnified] (${docId}) Add comment mutation successful. Result commentId: ${addCommentData?.addComment?.commentId}`);
-      return addCommentData.addComment;
+      return addCommentData.addComment.comment;
     } catch (error) {
-      console.error(`[useCommentsUnified] (${docId}) Failed to add comment:`, error);
       throw error;
     }
   };
 
-  const updateComment = async (comment: Comment, newText: string) => {
+  const updateComment = async (commentId: string, range: Range, text: string, author?: string) => {
     const input = {
-      text: newText,
-      author: comment.author, 
-      rangeStart: comment.rangeStart,
-      rangeEnd: comment.rangeEnd,
+      text,
+      author,
+      rangeStart: range.start,
+      rangeEnd: range.end,
     };
 
     try {
-      const { data: updateResult } = await updateCommentMutation({
-        variables: { docId, commentId: comment.commentId, input },
+      const { data: updateCommentData } = await updateCommentMutation({
+        variables: { docId, commentId, input },
         optimisticResponse: {
           updateComment: {
-            __typename: 'Comment',
-            ...comment, 
-            text: newText, 
-            updatedAt: new Date().toISOString(), 
+            __typename: 'CommentPayload',
+            comment: {
+              __typename: 'Comment',
+              commentId,
+              docId,
+              author: author || 'Anonymous',
+              text,
+              rangeStart: range.start,
+              rangeEnd: range.end,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            message: 'Optimistic update',
           },
         },
-        update: (cache, { data: mutationUpdateResult }) => {
-          if (!mutationUpdateResult || !mutationUpdateResult.updateComment) return;
-          const updatedCommentFromServer = mutationUpdateResult.updateComment;
-          
+        update: (cache, { data: mutationResult }) => {
+          if (!mutationResult || !mutationResult.updateComment || !mutationResult.updateComment.comment) return;
+          const updatedComment = mutationResult.updateComment.comment;
           const queryOptions = { query: GET_COMMENTS, variables: { docId } };
           const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
+          let updatedComments = existingCommentsData?.comments ? [...existingCommentsData.comments] : [];
 
-          if (existingCommentsData?.comments) {
-            cache.writeQuery({
-              ...queryOptions,
-              data: {
-                comments: existingCommentsData.comments.map(c =>
-                  c.commentId === updatedCommentFromServer.commentId ? updatedCommentFromServer : c
-                ),
-              },
-            });
+          const commentIndex = updatedComments.findIndex(c => c.commentId === updatedComment.commentId);
+          if (commentIndex > -1) {
+            updatedComments[commentIndex] = updatedComment;
+          } else {
+            updatedComments.push(updatedComment);
           }
+          cache.writeQuery({
+            ...queryOptions,
+            data: { comments: updatedComments },
+          });
         },
       });
-      
-      console.log(`[useCommentsUnified] (${docId}) Update comment mutation successful for commentId: ${updateResult?.updateComment?.commentId}`);
-      return updateResult.updateComment;
+      return updateCommentData.updateComment.comment;
     } catch (error) {
-      console.error(`[useCommentsUnified] (${docId}) Failed to update comment: ${comment.commentId}`, error);
       throw error;
     }
   };
 
   const deleteComment = async (commentId: string) => {
     try {
-      const { data: deleteResult } = await deleteCommentMutation({
+      await deleteCommentMutation({
         variables: { docId, commentId },
         optimisticResponse: {
-          deleteComment: commentId, 
+          deleteComment: true,
         },
-        update: (cache, { data: mutationResult }) => {
-          const deletedId = mutationResult?.deleteComment;
-          if (!deletedId) {
-            console.warn(`[useCommentsUnified] (${docId}) deleteComment mutation result did not return a commentId. Optimistic deletion might be the only cache update.`);
-          }
-
+        update: (cache) => {
           const queryOptions = { query: GET_COMMENTS, variables: { docId } };
           const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
+          let updatedComments = existingCommentsData?.comments ? [...existingCommentsData.comments] : [];
 
-          if (existingCommentsData?.comments) {
-            cache.writeQuery({
-              ...queryOptions,
-              data: {
-                comments: existingCommentsData.comments.filter((c: Comment) => c.commentId !== (deletedId || commentId)),
-              },
-            });
-          }
+          updatedComments = updatedComments.filter(c => c.commentId !== commentId);
+          cache.writeQuery({
+            ...queryOptions,
+            data: { comments: updatedComments },
+          });
         },
       });
-      console.log(`[useCommentsUnified] (${docId}) Delete comment mutation successful for commentId: ${deleteResult?.deleteComment || commentId}`);
-      return deleteResult.deleteComment;
     } catch (error) {
-      console.error(`[useCommentsUnified] (${docId}) Failed to delete comment: ${commentId}`, error);
       throw error;
     }
   };
 
   return {
-    commentsMap,
     loading,
-    reload: refetch,
+    comments: commentsMap,
+    refetchComments: refetch,
     addComment,
     updateComment,
     deleteComment,

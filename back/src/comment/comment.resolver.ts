@@ -21,10 +21,10 @@ export class CommentResolver {
   @Mutation(() => CommentPayload)
   async addComment(
     @Args('docId') docId: string,
-    @Args('createCommentInput') createCommentInput: CommentInput,
+    @Args('input') input: CommentInput,
   ): Promise<CommentPayload> {
-    const newComment = await this.commentService.add(docId, createCommentInput);
-    const payload: CommentEvent = { type: 'ADDED', comment: newComment, commentId: newComment.commentId, docId };
+    const newComment = await this.commentService.add(docId, input);
+    const payload: CommentEvent = { type: 'ADD', comment: newComment, commentId: newComment.commentId, docId };
     void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
     return { comment: newComment, message: 'Comment added successfully' };
   }
@@ -32,12 +32,12 @@ export class CommentResolver {
   @Mutation(() => CommentPayload)
   async updateComment(
     @Args('docId') docId: string,
-    @Args('id') id: string,
-    @Args('updateCommentInput') updateCommentInput: CommentInput,
+    @Args('commentId') commentId: string,
+    @Args('input') input: CommentInput,
   ): Promise<CommentPayload> {
-    const updatedComment = await this.commentService.update(docId, id, updateCommentInput);
+    const updatedComment = await this.commentService.update(docId, commentId, input);
     if (!updatedComment) throw new Error('Comment not found');
-    const payload: CommentEvent = { type: 'UPDATED', comment: updatedComment, commentId: id, docId };
+    const payload: CommentEvent = { type: 'UPDATE', comment: updatedComment, commentId, docId };
     void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
     return { comment: updatedComment, message: 'Comment updated successfully' };
   }
@@ -45,12 +45,12 @@ export class CommentResolver {
   @Mutation(() => CommentPayload)
   async deleteComment(
     @Args('docId') docId: string,
-    @Args('id') id: string,
+    @Args('commentId') commentId: string,
   ): Promise<CommentPayload> {
-    const commentToDelete = await this.commentService.findById(docId, id);
+    const commentToDelete = await this.commentService.findById(docId, commentId);
     if (!commentToDelete) throw new Error('Comment not found');
-    await this.commentService.delete(docId, id);
-    const payload: CommentEvent = { type: 'DELETED', comment: commentToDelete, commentId: id, docId };
+    await this.commentService.delete(docId, commentId);
+    const payload: CommentEvent = { type: 'DELETE', comment: commentToDelete, commentId, docId };
     void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
     return { comment: commentToDelete, message: 'Comment deleted successfully' };
   }
