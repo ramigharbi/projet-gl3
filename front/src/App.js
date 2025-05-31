@@ -6,5 +6,4 @@ function App() {
         <BlockNoteEditor />
   );
 }
-
 export default App;
