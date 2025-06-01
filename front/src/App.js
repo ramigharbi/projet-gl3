@@ -1,48 +1,29 @@
-import "./CSS/App.css";
-import DocumentView from "./views/DocumentView"; // Updated import path
+import React, { useState } from "react";
 import { ApolloProvider } from "@apollo/client";
 import client from "./apolloClient";
-import TextEditor from "./components/quill/TextEditor";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { v4 as uuidV4 } from "uuid";
+import { Routes, Route } from "react-router-dom";
+import AuthSection from "./components/AuthSection";
+import DocsHomepage from "./pages/docs/page";
+import DocumentPage from "./pages/document/[id]/page";
+import "./App.css";
 
-// Main App
-export default function App() {
-  if (!DocumentView || typeof DocumentView !== "function") {
-    console.error(
-      "[App.js] DocumentView is NOT a function! Value:",
-      DocumentView
-    );
-    return (
-      <div>
-        <h1>Error: DocumentView Not Loaded Correctly</h1>
-        <p>Received type: {typeof DocumentView}</p>
-        <p>Received value: {JSON.stringify(DocumentView)}</p>
-      </div>
-    );
+function App() {
+  const [authed, setAuthed] = useState(!!localStorage.getItem("token"));
+
+  const handleLogout = () => {
+    setAuthed(false);
+  };
+
+  if (!authed) {
+    return <AuthSection onAuth={() => setAuthed(true)} />;
   }
 
   return (
-    <ApolloProvider client={client}>
-      <div className="App">
-        <Router>
-          <Routes>
-            <Route
-              path="/"
-              element={<Navigate to={`/documents/${uuidV4()}`} replace />}
-            />
-            <Route
-              path="/documents/:id"
-              element={<DocumentView docId="doc1" />}
-            />
-          </Routes>
-        </Router>
-      </div>
-    </ApolloProvider>
+    <Routes>
+      <Route path="/" element={<DocsHomepage onLogout={handleLogout} />} />
+      <Route path="/document/:id" element={<DocumentPage />} />
+    </Routes>
   );
 }
+
+export default App;
