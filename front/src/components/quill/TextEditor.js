@@ -98,11 +98,16 @@ export default function TextEditor() {
       try {
         if (range && range.index !== undefined) {
           const color = generateUserColor(userId);
-          // Label cursor as 'user' plus ID substring for tagging
-          const displayName = `user${userId.slice(3)}`;
+          // Use provided userName if available, otherwise fallback to 'user' plus ID substring
+          const displayName = userName || `user${userId.slice(3)}`;
 
           // Create cursor if it doesn't exist
           cursors.createCursor(userId, displayName, color);
+          console.log(`Cursor name: ${displayName} (created)`);
+
+          // Explicitly try to show the flag
+          cursors.toggleFlag(userId, true);
+          console.log(`Flag for ${displayName} toggled to show.`);
 
           // Move cursor to new position
           cursors.moveCursor(userId, range);
@@ -196,7 +201,8 @@ export default function TextEditor() {
         userId: currentUserId,
         documentId: documentId,
         range: range, // This can be null when selection is lost
-        userName: `User ${currentUserId.slice(-4)}`,
+        // Tag as 'user' plus last 4 chars of ID for consistent naming
+        userName: `user${currentUserId.slice(-4)}`,
       });
     };
 

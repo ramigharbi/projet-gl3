@@ -8,6 +8,9 @@ body {
   background-color: #f3f3f3;
   margin: 0;
 }
+.container {
+  position: relative;
+}
 
 .container .ql-editor {
   width: 8.5in;
@@ -90,19 +93,28 @@ body {
   bottom: 100%;
   margin-bottom: 2px;
   white-space: nowrap;
+  /* Reverted from debugging styles */
   background-color: currentColor;
-  color: white;
-  padding: 2px 6px;
+  color: white; /* Changed back to white for proper contrast against colored background */
+  /* border: none; */ /* Assuming no border was intended before debug */
+  opacity: 1;
+  display: inline-block; /* Changed to inline-block for better text alignment */
+  /* --- End Reverted styles --- */
+  padding: 3px 2px;
   border-radius: 3px;
   font-size: 11px;
   font-weight: 500;
   font-family: Arial, sans-serif;
-  line-height: 1.2;
-  opacity: 1;
-  transition: opacity 0.3s ease;
+  line-height: 1.3;
+  height: auto;
+  min-height: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease; /* Restored transition */
   pointer-events: none;
   user-select: none;
-  z-index: 1002;
+  z-index: 1002; /* Ensure it's on top */
 }
 
 .ql-cursor-flag::after {
@@ -112,7 +124,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   border: 3px solid transparent;
-  border-top-color: currentColor;
+  border-top-color: currentColor; /* Restored border-top-color */
 }
 
 .ql-cursor-flag.ql-cursor-flag-flipped {
