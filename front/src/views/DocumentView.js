@@ -201,7 +201,7 @@ function DocumentView({ docId = "default-doc" }) {
                   },
                 }}
               >
-                <TextEditor />
+                <TextEditor onSelection={setSelectedRange} />
               </Box>
             </Paper>
           </Stack>

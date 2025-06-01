@@ -53,7 +53,7 @@ const TOOLBAR_OPTIONS = [
   ["clean"],
 ];
 
-export default function TextEditor() {
+export default function TextEditor({ onSelection }) {
   const { id: documentId } = useParams();
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
@@ -66,7 +66,7 @@ export default function TextEditor() {
     setCurrentUserId(userId);
   }, []);
   useEffect(() => {
-    const s = io("http://localhost:3001");
+    const s = io("http://localhost:3000");
     setSocket(s);
 
     // Send user connection info
@@ -196,6 +196,12 @@ export default function TextEditor() {
         source,
         userId: currentUserId,
       });
+      if(quill.hasFocus()) {
+        onSelection({
+          start: range.index,
+          end: range.index + (range.length || 0),
+        });
+      }
 
       socket.emit("cursor-position", {
         userId: currentUserId,
@@ -211,7 +217,7 @@ export default function TextEditor() {
     return () => {
       quill.off("selection-change", handleSelectionChange);
     };
-  }, [socket, quill, documentId, currentUserId]);
+  }, [socket, quill, documentId, currentUserId, onSelection]);
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
 
