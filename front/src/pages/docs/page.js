@@ -35,13 +35,20 @@ export default function DocsHomepage({ onLogout }) {
     setSearchQuery(query)
   }
 
-  const handleCreateDocument = (templateType) => {
-    // Create a new document and navigate to it
-    const newDoc = createDocument({
-      title: "Document sans titre",
-      type: templateType,
-    })
-    navigate(`/document/${newDoc.id}`)
+  const handleCreateDocument = async (templateType) => {
+    try {
+      // Create a new document and wait for the response
+      const newDoc = await createDocument({
+        title: "Document sans titre",
+        type: templateType,
+      })
+      // Only navigate once we have the document
+      if (newDoc && newDoc.id) {
+        navigate(`/document/${newDoc.id}`)
+      }
+    } catch (error) {
+      console.error("Failed to create document:", error)
+    }
   }
 
   const handleDocumentClick = (documentId) => {
