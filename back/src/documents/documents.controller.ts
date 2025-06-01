@@ -29,7 +29,7 @@ import { UsersService } from 'src/auth/users.service';
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService,
-      private readonly usersService: UsersService
+    private readonly usersService: UsersService
   ) { }
 
   @Post()
@@ -122,9 +122,18 @@ export class DocumentsController {
   @ApiResponse({ status: 404, description: 'Document not found' })
   async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserPayload) {
     const document = await this.documentsService.findOne(id);
-    if (document.ownerId !== user.userId) {
-      throw new ForbiddenException('You can only update your own documents');
+
+    console.log('Document fetched:', document);
+
+    const isAuthorized =
+      document.ownerId === user.userId ||
+      document.editors.some((editor) => editor.userId === user.userId) ||
+      document.viewers.some((viewer) => viewer.userId === user.userId);
+
+    if (!isAuthorized) {
+      throw new ForbiddenException('You can only access documents you own, edit, or view');
     }
+
     return document;
   }
 
@@ -203,9 +212,9 @@ export class DocumentsController {
     description: 'Invite sent successfully',
     schema: {
       properties: {
-        message: { type: 'string', example: 'Invite sent successfully' }
-      }
-    }
+        message: { type: 'string', example: 'Invite sent successfully' },
+      },
+    },
   })
   async inviteUser(@Body() inviteDto: { documentId: number; userId: number; accessLevel: 'editor' | 'viewer' }) {
     const { documentId, userId, accessLevel } = inviteDto;
@@ -213,7 +222,7 @@ export class DocumentsController {
     return { message: 'Invite sent successfully' };
   }
 
-  @Get('shared')
+  @Post('users')
   @ApiOperation({
     summary: 'Get users with access to a document',
     description: 'Returns the list of users (owner, editors, viewers) for a given documentId.'
@@ -225,7 +234,7 @@ export class DocumentsController {
         documentId: { type: 'number', example: 1 }
       },
       required: ['documentId']
-    }
+    },
   })
   @ApiResponse({
     status: 200,
@@ -245,7 +254,7 @@ export class DocumentsController {
     }
   })
   async getSharedUsers(@Body('documentId') documentId: number) {
-    return this.usersService.getSharedUsers(documentId);
+    return this.documentsService.getSharedUsers(documentId);
   }
 }
-// 
+//
