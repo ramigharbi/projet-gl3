@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import AuthSection from './components/AuthSection';
-import WelcomeSection from './components/WelcomeSection';
+import DocsHomepage from './pages/docs/page';
+import DocumentPage from './pages/document/[id]/page';
 import './App.css';
 
 function App() {
@@ -10,10 +12,12 @@ function App() {
     return <AuthSection onAuth={() => setAuthed(true)} />;
   }
 
-  return <WelcomeSection onLogout={() => {
-    localStorage.removeItem('token');
-    setAuthed(false);
-  }} />;
+  return (
+    <Routes>
+      <Route path="/" element={<DocsHomepage />} />
+      <Route path="/document/:id" element={<DocumentPage />} />
+    </Routes>
+  );
 }
 
 export default App;
