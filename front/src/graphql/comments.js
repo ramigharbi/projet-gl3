@@ -1,4 +1,7 @@
 // GraphQL Queries and Subscriptions
+import { gql } from '@apollo/client';
+
+
 export const GET_COMMENTS = gql`
   query GetComments($docId: String!) { # Changed ID! to String!
     comments(docId: $docId) {
