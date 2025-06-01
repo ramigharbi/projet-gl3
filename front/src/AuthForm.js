@@ -9,7 +9,7 @@ export default function AuthForm({ onAuth }) {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch(`http://localhost:3000/auth/${mode}`, {
+      const res = await fetch(`http://localhost:3000/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
