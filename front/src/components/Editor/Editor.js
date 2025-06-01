@@ -684,29 +684,7 @@ function Editor({ docId = 'default-doc' }) {
                           {comment.text}
                         </Text>
                           <Group justify="flex-end" mt="sm" gap="xs">
-                          <Tooltip label="Edit comment" position="top" withArrow>
-                            <ActionIcon
-                              variant="subtle"
-                              color="brand"
-                              size="sm"
-                              radius="xl"
-                              style={{ 
-                                opacity: 0.7,
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.opacity = '1';
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '0.7';
-                                e.currentTarget.style.transform = 'scale(1)';
-                              }}
-                              onClick={() => { /* Placeholder for edit */ }} // REVERTED: Removed handleEditComment call
-                            >
-                              ✏️
-                            </ActionIcon>
-                          </Tooltip>
+                          
                           <Tooltip label="Delete comment" position="top" withArrow>
                             <ActionIcon
                               variant="subtle"
