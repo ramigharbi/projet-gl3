@@ -25,6 +25,13 @@ interface EditorUpdate {
   userId: string;
 }
 
+interface CursorPosition {
+  userId: string;
+  documentId: string;
+  range: any; // Quill range format
+  userName?: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -37,6 +44,8 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private lastDocument: BlockNoteDocument | null = null;
   // In-memory storage for Quill documents
   private documents: Map<string, QuillDocument> = new Map();
+  // Track user cursors by document
+  private userCursors: Map<string, Map<string, any>> = new Map();
   private defaultValue = '';
 
   handleConnection(client: Socket) {
@@ -53,6 +62,15 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+
+    // Remove user cursors from all documents
+    this.userCursors.forEach((documentCursors, documentId) => {
+      if (documentCursors.has(client.id)) {
+        documentCursors.delete(client.id);
+        // Notify other users in the document
+        client.broadcast.to(documentId).emit('user-disconnected', client.id);
+      }
+    });
   }
 
   // Quill document handlers
@@ -107,6 +125,43 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       console.error('Error saving document:', error);
       client.emit('error', { message: 'Failed to save document' });
+    }
+  }
+  @SubscribeMessage('cursor-position')
+  handleCursorPosition(client: Socket, payload: CursorPosition) {
+    try {
+      const { userId, documentId, range, userName } = payload;
+
+      if (documentId) {
+        // Track cursor position for this document
+        if (!this.userCursors.has(documentId)) {
+          this.userCursors.set(documentId, new Map());
+        }
+
+        const documentCursors = this.userCursors.get(documentId)!;
+
+        if (range) {
+          // Store cursor information
+          documentCursors.set(client.id, { userId, range, userName });
+        } else {
+          // Remove cursor if no range
+          documentCursors.delete(client.id);
+        }
+
+        // Broadcast cursor position to all other clients in the same document room
+        client.broadcast.to(documentId).emit('cursor-update', {
+          userId: client.id, // Use socket ID as user identifier
+          range,
+          userName,
+        });
+
+        console.log(
+          `Cursor position updated for user ${userName} (${client.id}) in document ${documentId}`,
+          range,
+        );
+      }
+    } catch (error) {
+      console.error('Error handling cursor position:', error);
     }
   }
 
