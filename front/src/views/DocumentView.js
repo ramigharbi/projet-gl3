@@ -6,14 +6,14 @@ import {
   Box,
 } from '@mantine/core';
 import '@mantine/core/styles.css';
-import { useCommentsUnified } from '../../hooks/useCommentsUnified';
+import { useCommentsUnified } from '../hooks/useCommentsUnified';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from "@blocknote/mantine";
 import { useState, useMemo, useEffect } from 'react';
-import { editorTheme } from './theme';
-import { EditorLoadingScreen } from './EditorLoadingScreen';
-import { CommentSection } from './CommentSection';
-import { DocHeader } from '../DocHeader';
+import { editorTheme } from '../components/theme';
+import { EditorLoadingScreen } from '../components/EditorLoadingScreen';
+import { CommentSection } from '../components/CommentSection';
+import { DocHeader } from '../components/DocHeader';
 
 function DocumentView({ docId = 'default-doc' }) {
   const editor = useCreateBlockNote({});

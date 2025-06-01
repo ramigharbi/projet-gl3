@@ -1,4 +1,4 @@
-import './App.css';
+import './CSS/App.css';
 import DocumentView from './views/DocumentView'; // Updated import path
 import { ApolloProvider } from '@apollo/client';
 import client from './apolloClient';
