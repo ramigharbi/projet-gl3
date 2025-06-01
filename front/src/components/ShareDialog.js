@@ -48,11 +48,21 @@ export function ShareDialog({ open, onClose, documentName }) {
       const docIdString = documentId.toString()
       // Fetch shared users dynamically from the API using GET with query parameter
       axios
-        .get(`/api/documents/shared?documentId=${docIdString}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
+        .post(
+          "/api/documents/users",
+          { documentId: docIdString },
+          {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          }
+        )
         .then((response) => {
-          setSharedUsers(response.data)
+          const { owner, editors, viewers } = response.data
+          const users = [
+            { ...owner, access: "owner", isOwner: true },
+            ...editors.map((user) => ({ ...user, access: "editor", isOwner: false })),
+            ...viewers.map((user) => ({ ...user, access: "viewer", isOwner: false })),
+          ]
+          setSharedUsers(users)
         })
         .catch((error) => {
           console.error("Failed to fetch shared users", error)
@@ -117,13 +127,23 @@ export function ShareDialog({ open, onClose, documentName }) {
       )
       setInviteInput("")
       console.log(documentId)
-      const updatedUsersResponse = await axios.get(
-        `/api/documents/shared?documentId=${documentId}`,
+      const updatedUsersResponse = await axios.post(
+        `/api/documents/users`,
+        { documentId: documentId.toString() },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       )
-      setSharedUsers(updatedUsersResponse.data)
+
+      const { owner, editors, viewers } = updatedUsersResponse.data
+      const users = [
+        { ...owner, access: "owner", isOwner: true },
+        ...editors.map((user) => ({ ...user, access: "editor", isOwner: false })),
+        ...viewers.map((user) => ({ ...user, access: "viewer", isOwner: false })),
+      ]
+
+      console.log("Updated shared users:", users)
+      setSharedUsers(users)
     } catch (error) {
       console.error("Failed to send invite", error)
     }
@@ -226,13 +246,15 @@ export function ShareDialog({ open, onClose, documentName }) {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Avatar sx={{ width: 32, height: 32, backgroundColor: "#4285f4" }}>{user.name.charAt(0)}</Avatar>
+              <Avatar sx={{ width: 32, height: 32, backgroundColor: "#4285f4" }}>
+                {(user.username || "?").charAt(0)}
+              </Avatar>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {user.name} {user.isOwner && "(you)"}
+                  {user.username || "Unknown User"} {user.isOwner && "(you)"}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {user.email}
+                  {user.email || "No email provided"}
                 </Typography>
               </Box>
             </Box>

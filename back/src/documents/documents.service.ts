@@ -115,4 +115,24 @@ export class DocumentsService {
       .where('viewer.userId = :userId OR editor.userId = :userId', { userId })
       .getMany();
   }
+
+  async getSharedUsers(documentId: number): Promise<{ owner: UserEntity; editors: UserEntity[]; viewers: UserEntity[] }> {
+    const document = await this.documentsRepository.findOne({
+      where: { id: documentId },
+      relations: ['owner', 'editors', 'viewers'],
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const result = {
+      owner: document.owner,
+      editors: document.editors || [],
+      viewers: document.viewers || [],
+    };
+
+    console.log('getSharedUsers response:', result);
+    return result;
+  }
 }
