@@ -1,5 +1,6 @@
 import React from 'react';
 import { gql, useQuery, useSubscription, useMutation } from '@apollo/client';
+import { ID } from 'graphql-ws';
 
 // GraphQL Queries and Subscriptions
 export const GET_COMMENTS = gql`
@@ -18,7 +19,7 @@ export const GET_COMMENTS = gql`
 `;
 
 export const COMMENT_EVENTS = gql`
-  subscription CommentEvent($docId: String!) { # Already String!
+  subscription CommentEvent($docId: String!) {
     commentEvent(docId: $docId) {
       type
       comment {
@@ -31,7 +32,6 @@ export const COMMENT_EVENTS = gql`
         createdAt
         updatedAt
       }
-      docId # Added docId here as per backend DTO
     }
   }
 `;
@@ -70,8 +70,20 @@ export const UPDATE_COMMENT = gql`
 `;
 
 export const DELETE_COMMENT = gql`
-  mutation DeleteComment($docId: String!, $commentId: ID!) { # Changed ID! to String!
-    deleteComment(docId: $docId, commentId: $commentId)
+  mutation DeleteComment($docId: String!, $commentId: String!) {
+    deleteComment(docId: $docId, commentId: $commentId){
+      comment {
+        commentId
+        docId
+        text
+        author
+        createdAt
+        updatedAt
+        rangeStart
+        rangeEnd
+      }
+      message 
+    }
   }
 `;
 
