@@ -70,29 +70,32 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
   @SubscribeMessage('send-changes')
-  handleSendChanges(client: Socket, delta: any) {
+  handleSendChanges(
+    client: Socket,
+    payload: { delta: any; documentId: string },
+  ) {
     try {
-      // Get the document ID from the client's current room
-      const rooms = Array.from(client.rooms);
-      const documentId = rooms.find(room => room !== client.id);
-      
+      const { delta, documentId } = payload;
+
       if (documentId) {
         // Broadcast the changes to all other clients in the same document room
         client.broadcast.to(documentId).emit('receive-changes', delta);
-        console.log(`Changes sent from ${client.id} for document ${documentId}`);
+        console.log(
+          `Changes sent from ${client.id} for document ${documentId}`,
+        );
       }
     } catch (error) {
       console.error('Error sending changes:', error);
     }
   }
-
   @SubscribeMessage('save-document')
-  async handleSaveDocument(client: Socket, data: any) {
+  async handleSaveDocument(
+    client: Socket,
+    payload: { data: any; documentId: string },
+  ) {
     try {
-      // Get the document ID from the client's current room
-      const rooms = Array.from(client.rooms);
-      const documentId = rooms.find(room => room !== client.id);
-      
+      const { data, documentId } = payload;
+
       if (documentId) {
         // Update the document in memory
         const document = this.documents.get(documentId);
@@ -123,10 +126,10 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
       _id: id,
       data: this.defaultValue,
     };
-    
+
     this.documents.set(id, document);
     console.log(`Created new document: ${id}`);
-    
+
     return document;
   }
 
@@ -134,7 +137,10 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleEditorUpdate(client: Socket, payload: EditorUpdate) {
     try {
       // Validate and store the latest document state
-      if (payload.type === 'full-doc' && this.isValidDocument(payload.document)) {
+      if (
+        payload.type === 'full-doc' &&
+        this.isValidDocument(payload.document)
+      ) {
         this.lastDocument = payload.document;
 
         // Log the update

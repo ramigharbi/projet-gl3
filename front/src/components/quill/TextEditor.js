@@ -3,6 +3,7 @@ import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./style.css";
 import { io } from "socket.io-client";
+import { useParams } from "react-router-dom";
 
 const SAVE_INTERVAL_MS = 2000;
 const TOOLBAR_OPTIONS = [
@@ -18,8 +19,7 @@ const TOOLBAR_OPTIONS = [
 ];
 
 export default function TextEditor() {
-  // Use a default document ID for testing
-  const documentId = window.location.pathname.slice(1) || "default-document";
+  const { id: documentId } = useParams();
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
   useEffect(() => {
@@ -41,18 +41,20 @@ export default function TextEditor() {
 
     socket.emit("get-document", documentId);
   }, [socket, quill, documentId]);
-
   useEffect(() => {
     if (socket == null || quill == null) return;
 
     const interval = setInterval(() => {
-      socket.emit("save-document", quill.getContents());
+      socket.emit("save-document", {
+        data: quill.getContents(),
+        documentId: documentId,
+      });
     }, SAVE_INTERVAL_MS);
 
     return () => {
       clearInterval(interval);
     };
-  }, [socket, quill]);
+  }, [socket, quill, documentId]);
 
   useEffect(() => {
     if (socket == null || quill == null) return;
@@ -66,20 +68,22 @@ export default function TextEditor() {
       socket.off("receive-changes", handler);
     };
   }, [socket, quill]);
-
   useEffect(() => {
     if (socket == null || quill == null) return;
 
     const handler = (delta, oldDelta, source) => {
       if (source !== "user") return;
-      socket.emit("send-changes", delta);
+      socket.emit("send-changes", {
+        delta: delta,
+        documentId: documentId,
+      });
     };
     quill.on("text-change", handler);
 
     return () => {
       quill.off("text-change", handler);
     };
-  }, [socket, quill]);
+  }, [socket, quill, documentId]);
 
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
