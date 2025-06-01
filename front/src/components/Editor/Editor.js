@@ -1,105 +1,44 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/mantine";
-import "@blocknote/mantine/style.css";
-import { 
-  MantineProvider, 
-  createTheme, 
-  Button, 
-  Group, 
-  Text, 
-  Paper, 
-  Stack, 
-  Textarea, 
-  TextInput, 
-  Title, 
-  Badge, 
-  ActionIcon, 
-  Tooltip, 
-  Box, 
+import {
+  MantineProvider,
+  Button,
+  Group,
+  Text,
+  Paper,
+  Stack,
+  Textarea,
+  TextInput,
+  Title,
+  Badge,
+  ActionIcon,
+  Tooltip,
+  Box,
   Divider,
   Avatar,
   Notification,
   Loader,
   Transition,
-  rem
-} from '@mantine/core'; 
+} from '@mantine/core';
 import '@mantine/core/styles.css';
 import { useCommentsUnified } from '../../hooks/useCommentsUnified';
-
-const theme = createTheme({
-  spacing: { xs: '0.5rem', sm: '0.75rem', md: '1rem', lg: '1.25rem', xl: '1.5rem' },
-  colors: {
-    brand: [
-      '#f0f9ff',
-      '#e0f2fe',
-      '#bae6fd',
-      '#7dd3fc',
-      '#38bdf8',
-      '#0ea5e9',
-      '#0284c7',
-      '#0369a1',
-      '#075985',
-      '#0c4a6e'
-    ],
-    accent: [
-      '#fef3c7',
-      '#fde68a',
-      '#fcd34d',
-      '#fbbf24',
-      '#f59e0b',
-      '#d97706',
-      '#b45309',
-      '#92400e',
-      '#78350f',
-      '#451a03'
-    ],
-    success: [
-      '#dcfce7',
-      '#bbf7d0',
-      '#86efac',
-      '#4ade80',
-      '#22c55e',
-      '#16a34a',
-      '#15803d',
-      '#166534',
-      '#14532d',
-      '#052e16'
-    ]
-  },
-  primaryColor: 'brand',
-  defaultRadius: 'md',
-  shadows: {
-    xs: '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
-    sm: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
-    md: '0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06)',
-    lg: '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
-    xl: '0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04)',
-  },
-  fontSizes: {
-    xs: rem(12),
-    sm: rem(14),
-    md: rem(16),
-    lg: rem(18),
-    xl: rem(20),
-  },
-});
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from "@blocknote/mantine"; // Added import for BlockNoteView
+import { useState, useMemo, useEffect } from 'react';
+import { editorTheme } from './theme';
+import { EditorLoadingScreen } from './EditorLoadingScreen';
 
 function Editor({ docId = 'default-doc' }) {
-  
   const editor = useCreateBlockNote({});
-  const { 
-    commentsMap, 
-    loading, 
-    addComment, 
-    deleteComment,  
+  const {
+    commentsMap,
+    loading,
+    addComment,
+    deleteComment,
   } = useCommentsUnified(docId);
 
   const [selectedRange, setSelectedRange] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [authorName, setAuthorName] = useState('User');
-  
-  // Memoize comments array for display - moved before conditional return
+
   const commentsArray = useMemo(() => {
     if (!commentsMap) return [];
     if (typeof commentsMap.values !== 'function') return [];
@@ -107,86 +46,27 @@ function Editor({ docId = 'default-doc' }) {
     return arr;
   }, [commentsMap]);
 
-  // Effect to listen to selection changes in the editor
   useEffect(() => {
     if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.on === 'function') {
-
-      const handleSelectionUpdate = ({ editor: tiptapEditor }) => { 
+      const handleSelectionUpdate = ({ editor: tiptapEditor }) => {
         const pmSelection = tiptapEditor.state.selection;
-
         if (pmSelection && typeof pmSelection.from === 'number' && typeof pmSelection.to === 'number' && pmSelection.from !== pmSelection.to) {
           setSelectedRange({ start: pmSelection.from, end: pmSelection.to });
         } else {
           setSelectedRange(null);
         }
       };
-
       editor._tiptapEditor.on('selectionUpdate', handleSelectionUpdate);
-
       return () => {
         if (editor && editor._tiptapEditor && typeof editor._tiptapEditor.off === 'function') {
           editor._tiptapEditor.off('selectionUpdate', handleSelectionUpdate);
         }
       };
-    } 
-  }, [editor]); 
-  
-  // Conditional return must be AFTER all hook calls
+    }
+  }, [editor]);
+
   if (!editor) {
-    return (
-      <MantineProvider theme={theme}>
-        <Box style={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)', 
-          minHeight: '100vh',
-          padding: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Paper 
-            p="xl" 
-            withBorder 
-            radius="xl"
-            shadow="2xl"
-            style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              textAlign: 'center',
-              maxWidth: '400px',
-              width: '100%'
-            }}
-          >
-            <Stack align="center" gap="lg">
-              <Box
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '16px',
-                  background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '32px',
-                  animation: 'pulse 2s infinite'
-                }}
-              >
-                📝
-              </Box>
-              <Stack gap="sm" align="center">
-                <Loader size="lg" color="brand" />
-                <Title order={3} c="brand.7" fw={700}>
-                  Loading Editor...
-                </Title>
-                <Text c="dimmed" size="sm">
-                  Preparing your collaborative workspace
-                </Text>
-              </Stack>
-            </Stack>
-          </Paper>
-        </Box>
-      </MantineProvider>
-    );
+    return <EditorLoadingScreen />;
   }
 
   const handleAddComment = async () => {
@@ -194,16 +74,14 @@ function Editor({ docId = 'default-doc' }) {
       alert("Please select text that can be commented on, and enter both a comment and your name.");
       return;
     }
-    // Additional check for range validity, though useEffect should handle this
     if (typeof selectedRange.start !== 'number' || typeof selectedRange.end !== 'number' || selectedRange.start === selectedRange.end) {
-        alert("Invalid text selection range. Please select a non-empty text portion.");
-        return;
+      alert("Invalid text selection range. Please select a non-empty text portion.");
+      return;
     }
     try {
       await addComment(selectedRange, commentText, authorName);
       setCommentText('');
     } catch (error) {
-      // Enhanced error logging for Apollo/GraphQL errors
       if (error && error.graphQLErrors) {
         console.error("[Editor.js] GraphQL Errors:", error.graphQLErrors,error);
         alert("Failed to add comment: " + error.graphQLErrors.map(e => e.message).join("; "));
@@ -228,7 +106,7 @@ function Editor({ docId = 'default-doc' }) {
   };
 
   return (
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={editorTheme}>
       <style>
         {`
           @keyframes pulse {
