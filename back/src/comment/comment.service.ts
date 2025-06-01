@@ -30,26 +30,6 @@ export class CommentService {
     return comment;
   }
 
-  async update(
-    docId: string,
-    commentId: string,
-    input: Partial<CommentInput>,
-  ): Promise<Comment | null> {
-    const comments = this.comments.get(docId);
-    if (!comments) return null;
-
-    const commentIndex = comments.findIndex((c) => c.commentId === commentId);
-    if (commentIndex === -1) return null;
-
-    const comment = comments[commentIndex];
-    if (input.text !== undefined) comment.text = input.text;
-    if (input.author !== undefined) comment.author = input.author;
-    if (input.rangeStart !== undefined) comment.rangeStart = input.rangeStart;
-    if (input.rangeEnd !== undefined) comment.rangeEnd = input.rangeEnd;
-    comment.updatedAt = new Date();
-
-    return comment;
-  }
 
   async delete(docId: string, commentId: string): Promise<boolean> {
     const comments = this.comments.get(docId);

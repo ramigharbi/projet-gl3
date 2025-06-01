@@ -1,5 +1,5 @@
 // GraphQL Queries and Subscriptions
-const GET_COMMENTS = gql`
+export const GET_COMMENTS = gql`
   query GetComments($docId: String!) { # Changed ID! to String!
     comments(docId: $docId) {
       commentId
@@ -14,7 +14,7 @@ const GET_COMMENTS = gql`
   }
 `;
 
-const COMMENT_EVENTS = gql`
+export const COMMENT_EVENTS = gql`
   subscription CommentEvent($docId: String!) {
     commentEvent(docId: $docId) {
       type
@@ -32,7 +32,7 @@ const COMMENT_EVENTS = gql`
   }
 `;
 
-const ADD_COMMENT = gql`
+export const ADD_COMMENT = gql`
   mutation AddComment($docId: String!, $input: CommentInput!) {
     addComment(docId: $docId, input: $input) {
       comment {
@@ -51,7 +51,7 @@ const ADD_COMMENT = gql`
 `;
 
 
-const DELETE_COMMENT = gql`
+export const DELETE_COMMENT = gql`
   mutation DeleteComment($docId: String!, $commentId: String!) {
     deleteComment(docId: $docId, commentId: $commentId){
       comment {
@@ -68,11 +68,3 @@ const DELETE_COMMENT = gql`
     }
   }
 `;
-
-
-export default{
-  GET_COMMENTS,
-  COMMENT_EVENTS,
-  ADD_COMMENT,
-  DELETE_COMMENT
-}

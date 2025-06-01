@@ -23,24 +23,13 @@ export class CommentResolver {
     @Args('docId') docId: string,
     @Args('input') input: CommentInput,
   ): Promise<CommentPayload> {
+    console.log('addComment called', docId, input);
     const newComment = await this.commentService.add(docId, input);
     const payload: CommentEvent = { type: 'ADD', comment: newComment, commentId: newComment.commentId, docId };
     void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
     return { comment: newComment, message: 'Comment added successfully' };
   }
 
-  @Mutation(() => CommentPayload)
-  async updateComment(
-    @Args('docId') docId: string,
-    @Args('commentId') commentId: string,
-    @Args('input') input: CommentInput,
-  ): Promise<CommentPayload> {
-    const updatedComment = await this.commentService.update(docId, commentId, input);
-    if (!updatedComment) throw new Error('Comment not found');
-    const payload: CommentEvent = { type: 'UPDATE', comment: updatedComment, commentId, docId };
-    void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
-    return { comment: updatedComment, message: 'Comment updated successfully' };
-  }
 
   @Mutation(() => CommentPayload)
   async deleteComment(

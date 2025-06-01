@@ -1,91 +1,7 @@
 import React from 'react';
-import { gql, useQuery, useSubscription, useMutation } from '@apollo/client';
-import { ID } from 'graphql-ws';
+import {  useQuery, useSubscription, useMutation } from '@apollo/client';
+import {ADD_COMMENT, DELETE_COMMENT, GET_COMMENTS, COMMENT_EVENTS} from "../graphql/comments";
 
-// GraphQL Queries and Subscriptions
-export const GET_COMMENTS = gql`
-  query GetComments($docId: String!) { # Changed ID! to String!
-    comments(docId: $docId) {
-      commentId
-      docId
-      author
-      text
-      rangeStart
-      rangeEnd
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const COMMENT_EVENTS = gql`
-  subscription CommentEvent($docId: String!) {
-    commentEvent(docId: $docId) {
-      type
-      comment {
-        commentId
-        docId
-        author
-        text
-        rangeStart
-        rangeEnd
-        createdAt
-        updatedAt
-      }
-    }
-  }
-`;
-
-export const ADD_COMMENT = gql`
-  mutation AddComment($docId: String!, $input: CommentInput!) {
-    addComment(docId: $docId, input: $input) {
-      comment {
-        commentId
-        docId
-        text
-        author
-        createdAt
-        updatedAt
-        rangeStart
-        rangeEnd
-      }
-      message
-    }
-  }
-`;
-
-export const UPDATE_COMMENT = gql`
-  mutation UpdateComment($docId: String!, $commentId: ID!, $input: CommentInput!) { # Changed ID! to String!
-    updateComment(docId: $docId, commentId: $commentId, input: $input) {
-      commentId
-      docId
-      text
-      author
-      createdAt
-      updatedAt
-      rangeStart
-      rangeEnd
-    }
-  }
-`;
-
-export const DELETE_COMMENT = gql`
-  mutation DeleteComment($docId: String!, $commentId: String!) {
-    deleteComment(docId: $docId, commentId: $commentId){
-      comment {
-        commentId
-        docId
-        text
-        author
-        createdAt
-        updatedAt
-        rangeStart
-        rangeEnd
-      }
-      message 
-    }
-  }
-`;
 
 interface Comment {
   commentId: string;
@@ -109,7 +25,7 @@ interface Range {
  */
 export function useCommentsUnified(docId: string) {
   // Query for initial comments
-  const { data, loading, refetch, client } = useQuery(GET_COMMENTS, {
+  const { data, loading, client } = useQuery(GET_COMMENTS, {
     variables: { docId },
     fetchPolicy: 'cache-and-network',
     // notifyOnNetworkStatusChange: true, // Might be useful for debugging loading states
@@ -125,7 +41,6 @@ export function useCommentsUnified(docId: string) {
 
   // Mutations
   const [addCommentMutation] = useMutation(ADD_COMMENT);
-  const [updateCommentMutation] = useMutation(UPDATE_COMMENT);
   const [deleteCommentMutation] = useMutation(DELETE_COMMENT);
   // REMOVE Local state for optimistic updates
   // const [localComments, setLocalComments] = React.useState(new Map<string, Comment>());
@@ -290,58 +205,7 @@ export function useCommentsUnified(docId: string) {
     }
   };
 
-  const updateComment = async (commentId: string, range: Range, text: string, author?: string) => {
-    const input = {
-      text,
-      author,
-      rangeStart: range.start,
-      rangeEnd: range.end,
-    };
-
-    try {
-      const { data: updateCommentData } = await updateCommentMutation({
-        variables: { docId, commentId, input },
-        optimisticResponse: {
-          updateComment: {
-            __typename: 'CommentPayload',
-            comment: {
-              __typename: 'Comment',
-              commentId,
-              docId,
-              author: author || 'Anonymous',
-              text,
-              rangeStart: range.start,
-              rangeEnd: range.end,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            message: 'Optimistic update',
-          },
-        },
-        update: (cache, { data: mutationResult }) => {
-          if (!mutationResult || !mutationResult.updateComment || !mutationResult.updateComment.comment) return;
-          const updatedComment = mutationResult.updateComment.comment;
-          const queryOptions = { query: GET_COMMENTS, variables: { docId } };
-          const existingCommentsData = cache.readQuery<{ comments: Comment[] }>(queryOptions);
-          let updatedComments = existingCommentsData?.comments ? [...existingCommentsData.comments] : [];
-
-          const commentIndex = updatedComments.findIndex(c => c.commentId === updatedComment.commentId);
-          if (commentIndex > -1) {
-            updatedComments[commentIndex] = updatedComment;
-          } else {
-            updatedComments.push(updatedComment);
-          }
-          cache.writeQuery({
-            ...queryOptions,
-            data: { comments: updatedComments },
-          });
-        },
-      });
-      return updateCommentData.updateComment.comment;
-    } catch (error) {
-      throw error;
-    }
-  };
+  
 
   const deleteComment = async (commentId: string) => {
     try {
@@ -370,9 +234,7 @@ export function useCommentsUnified(docId: string) {
   return {
     loading,
     commentsMap,
-    refetchComments: refetch,
     addComment,
-    updateComment,
     deleteComment,
   };
 }

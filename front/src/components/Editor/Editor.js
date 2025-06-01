@@ -94,8 +94,7 @@ function Editor({ docId = 'default-doc' }) {
     commentsMap, 
     loading, 
     addComment, 
-    deleteComment, 
-    reload 
+    deleteComment,  
   } = useCommentsUnified(docId);
 
   const [selectedRange, setSelectedRange] = useState(null);
