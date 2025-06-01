@@ -86,9 +86,7 @@ const theme = createTheme({
 });
 
 function Editor({ docId = 'default-doc' }) {
-  console.log(`[Editor.js] Component rendering. Received docId: '${docId}'`); // Log received docId
   
-  // ALL HOOKS MUST BE CALLED AT THE TOP LEVE
   const editor = useCreateBlockNote({});
   const { 
     commentsMap, 
@@ -106,7 +104,6 @@ function Editor({ docId = 'default-doc' }) {
     if (!commentsMap) return [];
     if (typeof commentsMap.values !== 'function') return [];
     const arr = Array.from(commentsMap.values());
-    console.log('[Editor.js] DEBUG commentsArray:', arr);
     return arr;
   }, [commentsMap]);
 
@@ -205,9 +202,6 @@ function Editor({ docId = 'default-doc' }) {
     try {
       await addComment(selectedRange, commentText, authorName);
       setCommentText('');
-      // Optionally, you might want to keep the selection or clear it.
-      // setSelectedRange(null); // Clear selection after commenting - uncomment if desired
-      // console.log("[Editor.js] Comment added for range:", selectedRange); // Debug
     } catch (error) {
       // Enhanced error logging for Apollo/GraphQL errors
       if (error && error.graphQLErrors) {
@@ -224,14 +218,10 @@ function Editor({ docId = 'default-doc' }) {
   };
 
   const handleDeleteComment = async (commentId) => {
-    // console.log(`[Editor.js] Attempting to delete comment: ${commentId}`); // Debug
     if (window.confirm('Are you sure you want to delete this comment?')) {
       try {
         await deleteComment(commentId);
-        // console.log(`[Editor.js] Comment ${commentId} deleted successfully.`); // Debug
-        // Optionally, add a success notification here
       } catch (error) {
-        console.error(`[Editor.js] Failed to delete comment ${commentId}:`, error);
         alert("Failed to delete comment. See console for details.");
       }
     }
