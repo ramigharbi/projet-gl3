@@ -13,7 +13,7 @@ start "Frontend Server" cmd /c "cd front && npm start"
 
 echo.
 echo Both servers are starting...
-echo Backend: http://localhost:3000
-echo Frontend: http://localhost:3001
+echo Backend: http://localhost:3001
+echo Frontend: http://localhost:3000
 echo.
 pause

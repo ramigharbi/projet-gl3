@@ -66,7 +66,7 @@ export default function TextEditor() {
     setCurrentUserId(userId);
   }, []);
   useEffect(() => {
-    const s = io("http://localhost:3000");
+    const s = io("http://localhost:3001");
     setSocket(s);
 
     // Send user connection info
@@ -98,7 +98,8 @@ export default function TextEditor() {
       try {
         if (range && range.index !== undefined) {
           const color = generateUserColor(userId);
-          const displayName = userName || `User ${userId.slice(-4)}`;
+          // Label cursor as 'user' plus ID substring for tagging
+          const displayName = `user${userId.slice(3)}`;
 
           // Create cursor if it doesn't exist
           cursors.createCursor(userId, displayName, color);
