@@ -106,16 +106,15 @@ export function DocumentProvider({ children }) {
 
   // Initialize documents on mount
   useEffect(() => {
-    // Simulate API call
     const initializeDocuments = async () => {
       try {
         const response = await axios.get("/api/documents/user", {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
-        setDocuments(response.data) // Use API response to update state
+        setDocuments(response.data)
       } catch (error) {
         console.error("Failed to load documents from API:", error)
-        setDocuments([]) // Fallback to an empty array if API call fails
+        setDocuments([])
       } finally {
         setIsLoading(false)
       }
@@ -124,21 +123,57 @@ export function DocumentProvider({ children }) {
     initializeDocuments()
   }, [])
 
-  const getDocument = (id) => {
-    return documents.find((doc) => doc.id === id)
+  const getDocument = async (id) => {
+    try {
+      // Convert string id to number since backend expects numeric ids
+      const numericId = parseInt(id, 10)
+      if (isNaN(numericId)) {
+        throw new Error('Invalid document ID')
+      }
+
+      const response = await axios.get(`/api/documents/${numericId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Failed to fetch document:", error)
+      return null
+    }
   }
 
-  const updateDocument = (id, updates) => {
-    setDocuments((prevDocuments) =>
-      prevDocuments.map((doc) => (doc.id === id ? { ...doc, ...updates, updatedAt: new Date() } : doc)),
-    )
+  const updateDocument = async (id, updates) => {
+    try {
+      const numericId = parseInt(id, 10)
+      if (isNaN(numericId)) {
+        throw new Error('Invalid document ID')
+      }
+
+      const response = await axios.patch(
+        `/api/documents/${numericId}`,
+        updates,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      )
+      
+      setDocuments(prevDocuments =>
+        prevDocuments.map(doc => 
+          doc.id === numericId ? { ...doc, ...response.data } : doc
+        )
+      )
+      
+      return response.data
+    } catch (error) {
+      console.error("Failed to update document:", error)
+      throw error
+    }
   }
 
   const createDocument = async (document) => {
     // Validate and transform the payload to match CreateDocumentDto
     const payload = {
-      title: document.title || "Blank Document", // Default title
-      content: document.content || "Enter your text here", // Default content
+      title: document.title || "Blank Document",
+      content: document.content || "Enter your text here",
     }
 
     try {
@@ -146,10 +181,10 @@ export function DocumentProvider({ children }) {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       const newDocument = response.data
-      setDocuments((prevDocuments) => [newDocument, ...prevDocuments])
+      setDocuments(prevDocuments => [newDocument, ...prevDocuments])
       return newDocument
     } catch (error) {
-      console.error("Failed to create document", error)
+      console.error("Failed to create document:", error)
       throw error
     }
   }

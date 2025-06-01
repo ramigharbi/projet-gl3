@@ -11,7 +11,8 @@ export default function DocumentPage() {
   const { id: documentId } = useParams()
   const navigate = useNavigate()
   const { getDocument, updateDocument, isLoading } = useDocuments()
-  const [document, setDocument] = useState(getDocument(documentId))
+  const [document, setDocument] = useState(null)
+  const [isDocLoading, setIsDocLoading] = useState(true)
   const [comments, setComments] = useState([
     {
       id: "1",
@@ -22,16 +23,45 @@ export default function DocumentPage() {
   ])
 
   useEffect(() => {
-    if (!isLoading) {
-      const doc = getDocument(documentId)
-      setDocument(doc)
+    const fetchDocument = async () => {
+      if (!isLoading) {
+        setIsDocLoading(true)
+        try {
+          const doc = await getDocument(documentId)
+          if (doc) {
+            // Convert date strings to Date objects
+            setDocument({
+              ...doc,
+              createdAt: doc.createdAt ? new Date(doc.createdAt) : null,
+              updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : null,
+              lastModified: doc.updatedAt ? new Date(doc.updatedAt) : new Date(), // Fall back to current date if no update date
+            })
+          }
+        } catch (error) {
+          console.error("Error fetching document:", error)
+        } finally {
+          setIsDocLoading(false)
+        }
+      }
     }
+
+    fetchDocument()
   }, [documentId, getDocument, isLoading])
 
-  const handleDocumentNameChange = (name) => {
+  const handleDocumentNameChange = async (name) => {
     if (document) {
-      updateDocument(document.id, { title: name })
-      setDocument({ ...document, title: name })
+      try {
+        const updatedDoc = await updateDocument(document.id, { title: name })
+        setDocument(prev => ({
+          ...prev,
+          ...updatedDoc,
+          createdAt: new Date(updatedDoc.createdAt),
+          updatedAt: new Date(updatedDoc.updatedAt),
+          lastModified: new Date(updatedDoc.updatedAt),
+        }))
+      } catch (error) {
+        console.error("Error updating document name:", error)
+      }
     }
   }
 
@@ -50,10 +80,26 @@ export default function DocumentPage() {
   }
 
   const handleBackToHome = () => {
-    navigate("/")
+    navigate("/docs")
   }
 
-  if (isLoading) {
+  const formatDateTime = (date) => {
+    if (!date) return "Date inconnue"
+    try {
+      return date.toLocaleDateString("fr-FR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return "Date invalide"
+    }
+  }
+
+  if (isLoading || isDocLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
         <CircularProgress />
@@ -73,7 +119,7 @@ export default function DocumentPage() {
           gap: 2,
         }}
       >
-        <Typography variant="h6">Document not found</Typography>
+        <Typography variant="h6">Document non trouvé</Typography>
         <Button variant="contained" startIcon={<ArrowBack />} onClick={handleBackToHome}>
           Retour à l'accueil
         </Button>
@@ -110,14 +156,7 @@ export default function DocumentPage() {
               {document.content || "Voici le contenu de votre document. Vous pouvez commencer à taper ici..."}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 4, fontStyle: "italic" }}>
-              Dernière modification:{" "}
-              {document.lastModified.toLocaleDateString("fr-FR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              Dernière modification: {formatDateTime(document.lastModified)}
             </Typography>
           </Paper>
         </Container>
