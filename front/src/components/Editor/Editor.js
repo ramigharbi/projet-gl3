@@ -903,24 +903,6 @@ function Editor({ docId = 'default-doc' }) {
                   </Button>
                 </Stack>
               </Paper>
-              
-              <Button 
-                onClick={reload} 
-                variant="subtle" 
-                color="gray" 
-                fullWidth
-                size="sm"
-                radius="md"
-                leftSection="🔄"
-                style={{
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  height: '40px',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Refresh Comments
-              </Button>
             </Stack>
           </Paper>
         </Group>
