@@ -1,9 +1,6 @@
-import './App.css';
-import BlockNoteEditor from "./components/BlockNoteEditor/BlockNoteEditor";
-
+import "./App.css";
+import TextEditor from "./components/quill/quill-editor";
 function App() {
-  return (
-        <BlockNoteEditor />
-  );
+  return <TextEditor />;
 }
 export default App;
