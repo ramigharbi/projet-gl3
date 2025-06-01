@@ -10,7 +10,7 @@ export class DocumentsService {
   constructor(
     @InjectRepository(DocumentEntity)
     private documentsRepository: Repository<DocumentEntity>,
-  ) {}
+  ) { }
 
   async create(createDocumentDto: CreateDocumentDto, ownerId: number): Promise<DocumentEntity> {
     const document = this.documentsRepository.create({
@@ -53,5 +53,11 @@ export class DocumentsService {
     }
     await this.documentsRepository.delete(id);
     return { success: true };
+  }
+
+  async findByUser(userId: number): Promise<DocumentEntity[]> {
+    return this.documentsRepository.find({
+      where: { ownerId: userId },
+    });
   }
 }

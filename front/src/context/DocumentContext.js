@@ -1,5 +1,9 @@
 "use client"
 import { createContext, useContext, useState, useEffect } from "react"
+import axios from "axios"
+
+// Set base URL for axios
+axios.defaults.baseURL = "http://localhost:3000" // Replace with your backend URL
 
 // Mock data - replace with actual API calls
 const initialDocuments = [
@@ -105,16 +109,13 @@ export function DocumentProvider({ children }) {
     // Simulate API call
     const initializeDocuments = async () => {
       try {
-        // In a real app, you would fetch documents from an API
-        // const response = await fetch('/api/documents')
-        // const data = await response.json()
-        // setDocuments(data)
-
-        // For now, use mock data
-        setDocuments(initialDocuments)
+        const response = await axios.get("/api/documents/user", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        setDocuments(response.data) // Use API response to update state
       } catch (error) {
-        console.error("Failed to load documents:", error)
-        setDocuments(initialDocuments) // Fallback to mock data
+        console.error("Failed to load documents from API:", error)
+        setDocuments([]) // Fallback to an empty array if API call fails
       } finally {
         setIsLoading(false)
       }
@@ -133,26 +134,28 @@ export function DocumentProvider({ children }) {
     )
   }
 
-  const createDocument = (document) => {
-    const newDocument = {
-      id: Date.now().toString(),
-      title: document.title || "Document sans titre",
-      type: document.type || "document",
-      lastModified: new Date(),
-      thumbnail: document.thumbnail || "/placeholder.svg?height=300&width=200",
-      isShared: document.isShared || false,
-      owner: "current-user",
-      content: document.content || "Start typing to add content to your document...",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+  const createDocument = async (document) => {
+    // Validate and transform the payload to match CreateDocumentDto
+    const payload = {
+      title: document.title || "Blank Document", // Default title
+      content: document.content || "Enter your text here", // Default content
     }
 
-    setDocuments((prevDocuments) => [newDocument, ...prevDocuments])
-    return newDocument
+    try {
+      const response = await axios.post("/api/documents", payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const newDocument = response.data
+      setDocuments((prevDocuments) => [newDocument, ...prevDocuments])
+      return newDocument
+    } catch (error) {
+      console.error("Failed to create document", error)
+      throw error
+    }
   }
 
   return (
-    <DocumentContext.Provider value={{ documents, getDocument, updateDocument, createDocument, isLoading }}>
+    <DocumentContext.Provider value={{ documents, setDocuments, getDocument, updateDocument, createDocument, isLoading }}>
       {children}
     </DocumentContext.Provider>
   )

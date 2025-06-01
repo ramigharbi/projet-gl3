@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -23,7 +23,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
-    // Enable global validation
+  // Enable global validation
   app.useGlobalPipes(new ValidationPipe({
     transform: true,
     whitelist: true,
@@ -31,11 +31,24 @@ async function bootstrap() {
     transformOptions: {
       enableImplicitConversion: true,
     },
+    // Enhance ValidationPipe to provide detailed error messages
+    exceptionFactory: (errors) => {
+      const detailedErrors = errors.map(err => {
+        return {
+          field: err.property,
+          errors: Object.values(err.constraints || {}).join(', '),
+        };
+      });
+      return new BadRequestException({
+        message: 'Validation failed',
+        errors: detailedErrors,
+      });
+    },
   }));
 
   // Global error handling
   app.useGlobalFilters(new AllExceptionsFilter());
-  
+
   // Global logging
   app.useGlobalInterceptors(new LoggingInterceptor());
 
@@ -70,7 +83,10 @@ async function bootstrap() {
 
     logger.log(`📖 API Documentation available at http://localhost:${port}/api-docs`);
   }
-  
+
+  // Set a global prefix for all routes
+  app.setGlobalPrefix('api');
+
   await app.listen(port);
   logger.log(`🚀 Server running on http://localhost:${port}`);
   logger.log(`🌍 Environment: ${nodeEnv}`);

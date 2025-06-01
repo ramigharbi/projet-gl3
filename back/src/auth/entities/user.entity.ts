@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
+import { DocumentEntity } from '../../documents/entities/document.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -16,6 +17,15 @@ export class UserEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => DocumentEntity, (document) => document.owner)
+  ownedDocuments: DocumentEntity[];
+
+  @ManyToMany(() => DocumentEntity, (document) => document.viewers)
+  viewableDocuments: DocumentEntity[];
+
+  @ManyToMany(() => DocumentEntity, (document) => document.editors)
+  editableDocuments: DocumentEntity[];
 
   constructor(partial?: Partial<UserEntity>) {
     if (partial) Object.assign(this, partial);

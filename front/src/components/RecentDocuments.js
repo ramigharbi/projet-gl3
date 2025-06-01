@@ -16,6 +16,8 @@ export function RecentDocuments({ documents, onDocumentClick }) {
   const [anchorEl, setAnchorEl] = useState(null)
   const [selectedDoc, setSelectedDoc] = useState(null)
 
+  console.log(documents); // Debug log to verify the documents prop
+
   const handleMenuClick = (event, docId) => {
     event.stopPropagation()
     setAnchorEl(event.currentTarget)
@@ -36,15 +38,28 @@ export function RecentDocuments({ documents, onDocumentClick }) {
     }
   }
 
-  const formatDate = (date) => {
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const formatDate = (dateInput) => {
+    // Handle undefined or invalid date
+    if (!dateInput) {
+      return "Date inconnue";
+    }
+
+    // Convert string to Date object if needed
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Date invalide";
+    }
+
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {
-      return `Dernière ouverture ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`
+      return `Dernière ouverture ${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`;
     } else {
-      return `${date.getDate()} ${date.toLocaleDateString("fr-FR", { month: "short" })} ${date.getFullYear()}`
+      return `${date.getDate()} ${date.toLocaleDateString("fr-FR", { month: "short" })} ${date.getFullYear()}`;
     }
   }
 
