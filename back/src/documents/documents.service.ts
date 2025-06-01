@@ -33,10 +33,15 @@ export class DocumentsService {
   }
 
   async findOne(id: number): Promise<DocumentEntity> {
-    const document = await this.documentsRepository.findOne({ where: { id } });
+    const document = await this.documentsRepository.findOne({
+      where: { id },
+      relations: ['editors', 'viewers'],
+    });
+
     if (!document) {
       throw new NotFoundException(`Document with ID ${id} not found`);
     }
+
     return document;
   }
 

@@ -51,7 +51,8 @@ export class DocumentsController {
         createdAt: { type: 'string', format: 'date-time' },
         updatedAt: { type: 'string', format: 'date-time' }
       }
-    }})
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   create(@CurrentUser() user: UserPayload, @Body() createDocumentDto: CreateDocumentDto) {
@@ -121,9 +122,18 @@ export class DocumentsController {
   @ApiResponse({ status: 404, description: 'Document not found' })
   async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserPayload) {
     const document = await this.documentsService.findOne(id);
-    if (document.ownerId !== user.userId) {
-      throw new ForbiddenException('You can only update your own documents');
+
+    console.log('Document fetched:', document);
+
+    const isAuthorized =
+      document.ownerId === user.userId ||
+      document.editors.some((editor) => editor.userId === user.userId) ||
+      document.viewers.some((viewer) => viewer.userId === user.userId);
+
+    if (!isAuthorized) {
+      throw new ForbiddenException('You can only access documents you own, edit, or view');
     }
+
     return document;
   }
 
@@ -173,7 +183,8 @@ export class DocumentsController {
       properties: {
         success: { type: 'boolean', example: true }
       }
-    }})
+    }
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Access denied - not document owner' })
   @ApiResponse({ status: 404, description: 'Document not found' })
