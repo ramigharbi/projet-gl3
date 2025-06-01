@@ -1,17 +1,17 @@
 import './App.css';
-import Editor from './components/Editor/Editor'; // Updated import path
+import DocumentView from './views/DocumentView'; // Updated import path
 import { ApolloProvider } from '@apollo/client';
 import client from './apolloClient';
 
 // Main App
 export default function App() {
-  if (!Editor || typeof Editor !== 'function') {
-    console.error('[App.js] Editor is NOT a function! Value:', Editor);
+  if (!DocumentView || typeof DocumentView !== 'function') {
+    console.error('[App.js] DocumentView is NOT a function! Value:', DocumentView);
     return (
       <div>
-        <h1>Error: Editor Not Loaded Correctly</h1>
-        <p>Received type: {typeof Editor}</p>
-        <p>Received value: {JSON.stringify(Editor)}</p>
+        <h1>Error: DocumentView Not Loaded Correctly</h1>
+        <p>Received type: {typeof DocumentView}</p>
+        <p>Received value: {JSON.stringify(DocumentView)}</p>
       </div>
     );
   }
@@ -19,7 +19,7 @@ export default function App() {
   return (
     <ApolloProvider client={client}>
       <div className="App">
-        <Editor docId="doc1" /> {/* Using Editor */}
+        <DocumentView docId="doc1" />
       </div>
     </ApolloProvider>
   );
