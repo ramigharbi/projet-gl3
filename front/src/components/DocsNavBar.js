@@ -4,7 +4,7 @@ import { AppBar, Toolbar, IconButton, Typography, InputBase, Box, Avatar, Menu, 
 import { Menu as MenuIcon, Search, Apps } from "@mui/icons-material"
 import { Description as DocsIcon } from "@mui/icons-material"
 
-export function DocsNavBar({ onSearch }) {
+export function DocsNavBar({ onSearch, onLogout }) {
   const [searchValue, setSearchValue] = useState("")
   const [anchorEl, setAnchorEl] = useState(null)
 
@@ -131,7 +131,7 @@ export function DocsNavBar({ onSearch }) {
           >
             <MenuItem onClick={handleProfileClose}>Mon compte</MenuItem>
             <MenuItem onClick={handleProfileClose}>Paramètres</MenuItem>
-            <MenuItem onClick={handleProfileClose}>Se déconnecter</MenuItem>
+            <MenuItem onClick={onLogout}>Se déconnecter</MenuItem>
           </Menu>
         </Box>
       </Toolbar>

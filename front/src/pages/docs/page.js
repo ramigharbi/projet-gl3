@@ -8,7 +8,7 @@ import { TemplateSection } from "../../components/TemplateSection"
 import { RecentDocuments } from "../../components/RecentDocuments"
 import { useDocuments } from "../../context/DocumentContext"
 
-export default function DocsHomepage() {
+export default function DocsHomepage({ onLogout }) {
   const navigate = useNavigate()
   const { documents, createDocument } = useDocuments()
   const [searchQuery, setSearchQuery] = useState("")
@@ -34,7 +34,7 @@ export default function DocsHomepage() {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
-      <DocsNavBar onSearch={handleSearch} />
+      <DocsNavBar onSearch={handleSearch} onLogout={onLogout} />
       <Box sx={{ maxWidth: "1200px", mx: "auto", px: 3, py: 4 }}>
         <TemplateSection onCreateDocument={handleCreateDocument} />
         <RecentDocuments documents={documents} onDocumentClick={handleDocumentClick} />

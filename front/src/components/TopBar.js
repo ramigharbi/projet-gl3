@@ -41,6 +41,11 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
     navigate("/")
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("token")
+    navigate("/")
+  }
+
   return (
     <>
       <AppBar
@@ -170,6 +175,15 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
             >
               A
             </Avatar>
+
+            {/* Logout Button */}
+            <Button
+              color="inherit"
+              onClick={handleLogout}
+              sx={{ ml: 2, textTransform: "none", borderRadius: "24px" }}
+            >
+              Déconnexion
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>

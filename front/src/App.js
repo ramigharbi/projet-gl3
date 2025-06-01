@@ -8,13 +8,17 @@ import './App.css';
 function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('token'));
 
+  const handleLogout = () => {
+    setAuthed(false);
+  };
+
   if (!authed) {
     return <AuthSection onAuth={() => setAuthed(true)} />;
   }
 
   return (
     <Routes>
-      <Route path="/" element={<DocsHomepage />} />
+      <Route path="/" element={<DocsHomepage onLogout={handleLogout} />} />
       <Route path="/document/:id" element={<DocumentPage />} />
     </Routes>
   );
