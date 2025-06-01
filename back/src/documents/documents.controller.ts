@@ -103,14 +103,11 @@ export class DocumentsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Access denied - not document owner' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserPayload) {
-    const document = this.documentsService.findOne(id);
-    
-    // Check if user has access to this document
+  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserPayload) {
+    const document = await this.documentsService.findOne(id);
     if (document.ownerId !== user.userId) {
-      throw new ForbiddenException('You can only access your own documents');
+      throw new ForbiddenException('You can only update your own documents');
     }
-    
     return document;
   }
 

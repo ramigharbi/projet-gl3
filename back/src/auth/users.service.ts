@@ -1,14 +1,18 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
-import { User } from './interfaces/auth.interface';
 
 @Injectable()
 export class UsersService {
-  private readonly users: UserEntity[] = [];
+  constructor(
+    @InjectRepository(UserEntity)
+    private usersRepository: Repository<UserEntity>,
+  ) {}
 
-  async findOne(username: string): Promise<UserEntity | undefined> {
-    return this.users.find(user => user.username === username);
+  async findOne(username: string): Promise<UserEntity | null> {
+    return this.usersRepository.findOne({ where: { username } });
   }
 
   async create(username: string, password: string): Promise<UserEntity> {
@@ -19,14 +23,8 @@ export class UsersService {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = new UserEntity({ 
-      userId: Date.now(), 
-      username, 
-      password: hashed 
-    });
-    
-    this.users.push(user);
-    return user;
+    const user = this.usersRepository.create({ username, password: hashed });
+    return this.usersRepository.save(user);
   }
 
   async validateUser(username: string, pass: string): Promise<UserEntity | null> {

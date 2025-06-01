@@ -1,65 +1,57 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateDocumentDto, UpdateDocumentDto } from './dto';
 import { DocumentEntity } from './entities';
 import { Document } from './interfaces';
 
 @Injectable()
 export class DocumentsService {
-  private documents: DocumentEntity[] = [];
-  private docId = 1;
+  constructor(
+    @InjectRepository(DocumentEntity)
+    private documentsRepository: Repository<DocumentEntity>,
+  ) {}
 
-  create(createDocumentDto: CreateDocumentDto, ownerId: number): DocumentEntity {
-    const document = new DocumentEntity({
-      id: this.docId++,
+  async create(createDocumentDto: CreateDocumentDto, ownerId: number): Promise<DocumentEntity> {
+    const document = this.documentsRepository.create({
       title: createDocumentDto.title,
       content: createDocumentDto.content || '',
       ownerId,
     });
-    
-    this.documents.push(document);
-    return document;
+    return this.documentsRepository.save(document);
   }
 
-  findAll(): DocumentEntity[] {
-    return this.documents;
+  async findAll(): Promise<DocumentEntity[]> {
+    return this.documentsRepository.find();
   }
 
-  findAllByOwner(ownerId: number): DocumentEntity[] {
-    return this.documents.filter(doc => doc.ownerId === ownerId);
+  async findAllByOwner(ownerId: number): Promise<DocumentEntity[]> {
+    return this.documentsRepository.find({ where: { ownerId } });
   }
 
-  findOne(id: number): DocumentEntity {
-    const document = this.documents.find(doc => doc.id === id);
+  async findOne(id: number): Promise<DocumentEntity> {
+    const document = await this.documentsRepository.findOne({ where: { id } });
     if (!document) {
       throw new NotFoundException(`Document with ID ${id} not found`);
     }
     return document;
   }
 
-  update(id: number, updateDocumentDto: UpdateDocumentDto, userId: number): DocumentEntity {
-    const document = this.findOne(id);
-    
+  async update(id: number, updateDocumentDto: UpdateDocumentDto, userId: number): Promise<DocumentEntity> {
+    const document = await this.findOne(id);
     if (document.ownerId !== userId) {
       throw new ForbiddenException('You can only update your own documents');
     }
-
     Object.assign(document, updateDocumentDto, { updatedAt: new Date() });
-    return document;
+    return this.documentsRepository.save(document);
   }
 
-  remove(id: number, userId: number): { success: boolean } {
-    const documentIndex = this.documents.findIndex(doc => doc.id === id);
-    
-    if (documentIndex === -1) {
-      throw new NotFoundException(`Document with ID ${id} not found`);
-    }
-
-    const document = this.documents[documentIndex];
+  async remove(id: number, userId: number): Promise<{ success: boolean }> {
+    const document = await this.findOne(id);
     if (document.ownerId !== userId) {
       throw new ForbiddenException('You can only delete your own documents');
     }
-
-    this.documents.splice(documentIndex, 1);
+    await this.documentsRepository.delete(id);
     return { success: true };
   }
 }
