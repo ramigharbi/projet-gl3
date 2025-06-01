@@ -1,6 +1,17 @@
 "use client"
-import { useState } from "react"
-import { Box, Typography, Card, CardContent, IconButton, Menu, MenuItem, Select, FormControl } from "@mui/material"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  IconButton,
+  Menu,
+  MenuItem,
+  Select,
+  FormControl,
+} from "@mui/material"
 import {
   Description as DocumentIcon,
   MoreVert,
@@ -10,13 +21,18 @@ import {
   Folder,
   Article,
 } from "@mui/icons-material"
+import { useDocuments } from "../context/DocumentContext"
 
 export function RecentDocuments({ documents, onDocumentClick }) {
+  const { deleteDocument, copyDocument } = useDocuments()
   const [filter, setFilter] = useState("all")
   const [anchorEl, setAnchorEl] = useState(null)
   const [selectedDoc, setSelectedDoc] = useState(null)
+  const navigate = useNavigate()
 
-  console.log(documents); // Debug log to verify the documents prop
+  useEffect(() => {
+    console.log("Documents updated:", documents)
+  }, [documents])
 
   const handleMenuClick = (event, docId) => {
     event.stopPropagation()
@@ -27,6 +43,32 @@ export function RecentDocuments({ documents, onDocumentClick }) {
   const handleMenuClose = () => {
     setAnchorEl(null)
     setSelectedDoc(null)
+  }
+
+  const handleDelete = async () => {
+    if (selectedDoc) {
+      try {
+        await deleteDocument(selectedDoc)
+        handleMenuClose()
+      } catch (error) {
+        console.error("Error deleting document:", error)
+      }
+    }
+  }
+
+  const handleCopy = async () => {
+    if (selectedDoc) {
+      try {
+        const newDoc = await copyDocument(selectedDoc)
+        handleMenuClose()
+        // Optionally navigate to the new document
+        if (newDoc && newDoc.id) {
+          navigate(`/document/${newDoc.id}`)
+        }
+      } catch (error) {
+        console.error("Error copying document:", error)
+      }
+    }
   }
 
   const getDocumentIcon = (type) => {
@@ -216,11 +258,12 @@ export function RecentDocuments({ documents, onDocumentClick }) {
           horizontal: "right",
         }}
       >
-        <MenuItem onClick={handleMenuClose}>Ouvrir</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Partager</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Renommer</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Supprimer</MenuItem>
-        <MenuItem onClick={handleMenuClose}>Créer une copie</MenuItem>
+        <MenuItem onClick={() => {
+          handleMenuClose()
+          if (selectedDoc) onDocumentClick(selectedDoc)
+        }}>Ouvrir</MenuItem>
+        <MenuItem onClick={handleDelete}>Supprimer</MenuItem>
+        <MenuItem onClick={handleCopy}>Créer une copie</MenuItem>
       </Menu>
     </Box>
   )

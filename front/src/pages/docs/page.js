@@ -9,6 +9,15 @@ import { RecentDocuments } from "../../components/RecentDocuments"
 import { useDocuments } from "../../context/DocumentContext"
 import axios from "axios"
 
+const filterDocuments = (docs, query) => {
+  if (!query) return docs
+  const lowerQuery = query.toLowerCase()
+  return docs.filter(doc => 
+    doc.title.toLowerCase().includes(lowerQuery) || 
+    doc.content.toLowerCase().includes(lowerQuery)
+  )
+}
+
 export default function DocsHomepage({ onLogout }) {
   const navigate = useNavigate()
   const { documents, setDocuments, createDocument } = useDocuments()
@@ -56,12 +65,14 @@ export default function DocsHomepage({ onLogout }) {
     navigate(`/document/${documentId}`)
   }
 
+  const filteredDocuments = filterDocuments(documents, searchQuery)
+
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
       <DocsNavBar onSearch={handleSearch} onLogout={onLogout} />
       <Box sx={{ maxWidth: "1200px", mx: "auto", px: 3, py: 4 }}>
         <TemplateSection onCreateDocument={handleCreateDocument} />
-        <RecentDocuments documents={documents} onDocumentClick={handleDocumentClick} />
+        <RecentDocuments documents={filteredDocuments} onDocumentClick={handleDocumentClick} />
       </Box>
     </Box>
   )

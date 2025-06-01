@@ -5,8 +5,8 @@ import axios from "axios"
 // Set base URL for axios
 axios.defaults.baseURL = "http://localhost:3000" // Replace with your backend URL
 
-// Mock data - replace with actual API calls
-const initialDocuments = [
+// We'll use these templates for the copy feature
+const documentTemplates = [
   {
     id: "1",
     title: "Document sans titre",
@@ -189,8 +189,58 @@ export function DocumentProvider({ children }) {
     }
   }
 
+  const deleteDocument = async (id) => {
+    try {
+      const numericId = parseInt(id, 10)
+      if (isNaN(numericId)) {
+        throw new Error('Invalid document ID')
+      }
+
+      await axios.delete(`/api/documents/${numericId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      
+      // Remove document from state after successful deletion
+      setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== numericId))
+      return true
+    } catch (error) {
+      console.error("Failed to delete document:", error)
+      throw error
+    }
+  }
+
+  const copyDocument = async (id) => {
+    try {
+      const docToCopy = documents.find(doc => doc.id === id)
+      if (!docToCopy) {
+        throw new Error('Document not found')
+      }
+
+      // Create new document with copied content
+      const newDoc = await createDocument({
+        title: `${docToCopy.title} (copie)`,
+        content: docToCopy.content,
+        type: docToCopy.type
+      })
+
+      return newDoc
+    } catch (error) {
+      console.error("Failed to copy document:", error)
+      throw error
+    }
+  }
+
   return (
-    <DocumentContext.Provider value={{ documents, setDocuments, getDocument, updateDocument, createDocument, isLoading }}>
+    <DocumentContext.Provider value={{ 
+      documents, 
+      setDocuments, 
+      getDocument, 
+      updateDocument, 
+      createDocument, 
+      deleteDocument,
+      copyDocument,
+      isLoading 
+    }}>
       {children}
     </DocumentContext.Provider>
   )
