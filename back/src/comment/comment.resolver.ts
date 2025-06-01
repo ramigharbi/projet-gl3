@@ -23,7 +23,6 @@ export class CommentResolver {
     @Args('docId') docId: string,
     @Args('input') input: CommentInput,
   ): Promise<CommentPayload> {
-    console.log('addComment called', docId, input);
     const newComment = await this.commentService.add(docId, input);
     const payload: CommentEvent = { type: 'ADD', comment: newComment, commentId: newComment.commentId, docId };
     void this.pubSub.publish(`COMMENT_EVT:${docId}`, payload);
