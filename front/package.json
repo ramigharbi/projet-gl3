@@ -4,16 +4,12 @@
   "private": true,
   "dependencies": {
     "@apollo/client": "^3.13.8",
-    "@blocknote/core": "^0.31.1",
-    "@blocknote/mantine": "^0.31.1",
-    "@blocknote/react": "^0.31.1",
+    "@mantine/core": "^8.0.2",
     "@nestjs/graphql": "^13.1.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "quill": "^2.0.3",
-    "quill-cursors": "^4.0.4",
     "apollo-server-express": "^3.13.0",
     "graphql": "^16.11.0",
     "graphql-subscriptions": "^3.0.0",
@@ -22,20 +18,22 @@
     "prosemirror-state": "^1.4.3",
     "prosemirror-transform": "^1.10.4",
     "prosemirror-view": "^1.39.3",
+    "quill": "^2.0.3",
+    "quill-cursors": "^4.0.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.1",
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.1",
-    "uuid": "^11.1.0",
     "subscriptions-transport-ws": "^0.11.0",
+    "uuid": "^11.1.0",
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.0",
     "cross-env": "^7.0.3",
-    "typescript": "^5.8.3"
+    "typescript": "^4.9.5"
   },
   "scripts": {
     "start": "react-scripts start",
