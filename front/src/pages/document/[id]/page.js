@@ -80,7 +80,7 @@ export default function DocumentPage() {
   }
 
   const handleBackToHome = () => {
-    navigate("/docs")
+    navigate("/")
   }
 
   const formatDateTime = (date) => {

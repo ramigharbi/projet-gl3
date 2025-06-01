@@ -4,12 +4,15 @@ import { Repository } from 'typeorm';
 import { CreateDocumentDto, UpdateDocumentDto } from './dto';
 import { DocumentEntity } from './entities';
 import { Document } from './interfaces';
+import { UserEntity } from '../auth/entities/user.entity';
 
 @Injectable()
 export class DocumentsService {
   constructor(
     @InjectRepository(DocumentEntity)
     private documentsRepository: Repository<DocumentEntity>,
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
   ) { }
 
   async create(createDocumentDto: CreateDocumentDto, ownerId: number): Promise<DocumentEntity> {
@@ -59,5 +62,57 @@ export class DocumentsService {
     return this.documentsRepository.find({
       where: { ownerId: userId },
     });
+  }
+
+  async sendInvite(documentId: number, userId: number, accessLevel: 'editor' | 'viewer'): Promise<void> {
+    const document = await this.documentsRepository.findOne({
+      where: { id: documentId },
+      relations: ['editors', 'viewers'],
+    });
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const user = await this.userRepository.findOne({ where: { userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (accessLevel === 'editor') {
+      document.editors = [...(document.editors || []), user];
+    } else {
+      document.viewers = [...(document.viewers || []), user];
+    }
+
+    await this.documentsRepository.save(document);
+  }
+
+  async shareDocument(documentId: number, userId: number, accessType: 'view' | 'edit'): Promise<DocumentEntity> {
+    const document = await this.documentsRepository.findOne({ where: { id: documentId }, relations: ['viewers', 'editors'] });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const user = await this.userRepository.findOne({ where: { userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (accessType === 'view') {
+      document.viewers = [...document.viewers, user];
+    } else if (accessType === 'edit') {
+      document.editors = [...document.editors, user];
+    }
+
+    return this.documentsRepository.save(document);
+  }
+  async findSharedDocuments(userId: number): Promise<DocumentEntity[]> {
+    return this.documentsRepository.createQueryBuilder('document')
+      .leftJoinAndSelect('document.viewers', 'viewer')
+      .leftJoinAndSelect('document.editors', 'editor')
+      .where('viewer.userId = :userId OR editor.userId = :userId', { userId })
+      .getMany();
   }
 }

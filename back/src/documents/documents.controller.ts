@@ -12,7 +12,8 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
-  BadRequestException
+  BadRequestException,
+  Query
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
@@ -20,13 +21,16 @@ import { CreateDocumentDto, UpdateDocumentDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators';
 import { UserPayload } from '../auth/interfaces/auth.interface';
+import { UsersService } from 'src/auth/users.service';
 
 @ApiTags('documents')
 @ApiBearerAuth('JWT-auth')
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) { }
+  constructor(private readonly documentsService: DocumentsService,
+      private readonly usersService: UsersService
+  ) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -178,4 +182,70 @@ export class DocumentsController {
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserPayload) {
     return this.documentsService.remove(id, user.userId);
   }
+
+  @Post('invite')
+  @ApiOperation({
+    summary: 'Send an invite to a user for collaboration',
+    description: 'Sends an invitation to a user to collaborate on a document'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentId: { type: 'number', example: 1 },
+        userId: { type: 'number', example: 456 },
+        accessLevel: { type: 'string', enum: ['editor', 'viewer'], example: 'editor' }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Invite sent successfully',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Invite sent successfully' }
+      }
+    }
+  })
+  async inviteUser(@Body() inviteDto: { documentId: number; userId: number; accessLevel: 'editor' | 'viewer' }) {
+    const { documentId, userId, accessLevel } = inviteDto;
+    await this.documentsService.sendInvite(documentId, userId, accessLevel);
+    return { message: 'Invite sent successfully' };
+  }
+
+  @Get('shared')
+  @ApiOperation({
+    summary: 'Get users with access to a document',
+    description: 'Returns the list of users (owner, editors, viewers) for a given documentId.'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        documentId: { type: 'number', example: 1 }
+      },
+      required: ['documentId']
+    }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of users with access to the document',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', example: 1 },
+          name: { type: 'string', example: 'John Doe' },
+          email: { type: 'string', example: 'john@example.com' },
+          access: { type: 'string', enum: ['owner', 'editor', 'viewer'], example: 'editor' },
+          isOwner: { type: 'boolean', example: false }
+        }
+      }
+    }
+  })
+  async getSharedUsers(@Body('documentId') documentId: number) {
+    return this.usersService.getSharedUsers(documentId);
+  }
 }
+// 

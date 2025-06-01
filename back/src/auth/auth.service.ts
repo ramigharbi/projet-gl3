@@ -9,7 +9,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
   async validateUser(username: string, pass: string): Promise<UserPayload | null> {
     const user = await this.usersService.validateUser(username, pass);
     if (user) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogTitle,
@@ -19,26 +19,67 @@ import {
   Divider,
 } from "@mui/material"
 import { Close, Link as LinkIcon, Lock, ExpandMore } from "@mui/icons-material"
+import axios from "axios"
+import { useLocation } from "react-router-dom"
 
-export function ShareDialog({ open, onClose, documentName, onShare }) {
+export function ShareDialog({ open, onClose, documentName }) {
   const [inviteInput, setInviteInput] = useState("")
   const [accessLevel, setAccessLevel] = useState("editor")
   const [generalAccess, setGeneralAccess] = useState("restricted")
+  const [sharedUsers, setSharedUsers] = useState([])
+  const [filteredUsers, setFilteredUsers] = useState([])
+  const [documentId, setDocumentId] = useState(null)
+  const location = useLocation()
 
-  const [sharedUsers] = useState([
-    {
-      id: "1",
-      name: "Adem Saidi",
-      email: "ademsaidi30@gmail.com",
-      access: "editor",
-      isOwner: true,
-    },
-  ])
+  useEffect(() => {
+    // Extract document ID from the URL and parse it as an integer
+    const pathSegments = location.pathname.split("/")
+    const idFromUrl = parseInt(pathSegments[pathSegments.length - 1], 10)
+    if (!isNaN(idFromUrl)) {
+      setDocumentId(idFromUrl)
+    } else {
+      console.error("Invalid document ID in URL")
+    }
+  }, [location])
 
-  const handleInvite = () => {
+  useEffect(() => {
+    if (documentId) {
+      // Convert documentId to string before making the request
+      const docIdString = documentId.toString()
+      // Fetch shared users dynamically from the API using GET with query parameter
+      axios
+        .get(`/api/documents/shared?documentId=${docIdString}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((response) => {
+          setSharedUsers(response.data)
+        })
+        .catch((error) => {
+          console.error("Failed to fetch shared users", error)
+        })
+    }
+  }, [documentId])
+
+  useEffect(() => {
     if (inviteInput.trim()) {
-      // Handle invitation logic here
-      console.log("Inviting:", inviteInput, "with access:", accessLevel)
+      axios
+        .get(`/api/auth/users?query=${inviteInput.trim()}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        })
+        .then((response) => {
+          console.log("API Response:", response.data) // Log the full API response
+          setFilteredUsers(response.data)
+        })
+        .catch((error) => {
+          console.error("Failed to fetch users", error)
+        })
+    } else {
+      setFilteredUsers([])
+    }
+  }, [inviteInput])
+
+  const handleInvite = (user) => {
+    if (user) {
       setInviteInput("")
     }
   }
@@ -46,6 +87,46 @@ export function ShareDialog({ open, onClose, documentName, onShare }) {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href)
     // You could show a snackbar here
+  }
+
+  const handleSendInvite = async () => {
+    if (!inviteInput.trim()) {
+      console.error("Invite input is empty")
+      return
+    }
+
+    console.log("Filtered users:", filteredUsers)
+    console.log("Invite input:", inviteInput)
+
+    const selectedUser = filteredUsers.find((user) => user.username === inviteInput)
+    if (!selectedUser) {
+      console.error("User not found in the filtered list")
+      return
+    }
+    try {
+      const response = await axios.post(
+        "/api/documents/invite",
+        {
+          documentId,
+          userId: selectedUser.userId, // Ensure the correct user ID is passed
+          accessLevel: accessLevel === "editor" ? "editor" : "viewer",
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      )
+      setInviteInput("")
+      console.log(documentId)
+      const updatedUsersResponse = await axios.get(
+        `/api/documents/shared?documentId=${documentId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      )
+      setSharedUsers(updatedUsersResponse.data)
+    } catch (error) {
+      console.error("Failed to send invite", error)
+    }
   }
 
   return (
@@ -77,7 +158,7 @@ export function ShareDialog({ open, onClose, documentName, onShare }) {
         <Box sx={{ mb: 3 }}>
           <TextField
             fullWidth
-            placeholder="Ajouter des personnes, des groupes et des événements d'agenda"
+            placeholder="Ajouter des personnes"
             value={inviteInput}
             onChange={(e) => setInviteInput(e.target.value)}
             variant="outlined"
@@ -104,13 +185,28 @@ export function ShareDialog({ open, onClose, documentName, onShare }) {
                       <MenuItem value="viewer">Lecteur</MenuItem>
                     </Select>
                   </FormControl>
-                  <Button onClick={handleInvite} disabled={!inviteInput.trim()} sx={{ textTransform: "none" }}>
+                  <Button onClick={handleSendInvite} disabled={!inviteInput.trim()} sx={{ textTransform: "none" }}>
                     Envoyer
                   </Button>
                 </Box>
               ),
             }}
           />
+          {filteredUsers.length > 0 && (
+            <Box sx={{ mt: 1, border: "1px solid #ccc", borderRadius: "8px", maxHeight: "150px", overflowY: "auto" }}>
+              {filteredUsers.map((user) => (
+                <MenuItem
+                  key={user.id}
+                  onClick={() => setInviteInput(user.username)} // Select user by setting inviteInput
+                  sx={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <Box>
+                    <Typography variant="body2">{user.username}</Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Box>
+          )}
         </Box>
 
         {/* Users with Access */}
@@ -151,7 +247,6 @@ export function ShareDialog({ open, onClose, documentName, onShare }) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* General Access */}
         <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
           Accès général
         </Typography>
