@@ -57,11 +57,19 @@ export function ShareDialog({ open, onClose, documentName }) {
         )
         .then((response) => {
           const { owner, editors, viewers } = response.data
-          const users = [
+            // Combine users and remove duplicates by username
+            const allUsers = [
             { ...owner, access: "owner", isOwner: true },
             ...editors.map((user) => ({ ...user, access: "editor", isOwner: false })),
             ...viewers.map((user) => ({ ...user, access: "viewer", isOwner: false })),
-          ]
+            ]
+            // Remove duplicates by username
+            const seenUsernames = new Set()
+            const users = allUsers.filter(user => {
+            if (seenUsernames.has(user.username)) return false
+            seenUsernames.add(user.username)
+            return true
+            })
           setSharedUsers(users)
         })
         .catch((error) => {
@@ -77,8 +85,11 @@ export function ShareDialog({ open, onClose, documentName }) {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then((response) => {
-          console.log("API Response:", response.data) // Log the full API response
-          setFilteredUsers(response.data)
+          const allUsers = response.data
+          const filtered = allUsers.filter(
+            (user) => !sharedUsers.some((sharedUser) => sharedUser.userId === user.userId)
+          )
+          setFilteredUsers(filtered)
         })
         .catch((error) => {
           console.error("Failed to fetch users", error)
@@ -86,7 +97,7 @@ export function ShareDialog({ open, onClose, documentName }) {
     } else {
       setFilteredUsers([])
     }
-  }, [inviteInput])
+  }, [inviteInput, sharedUsers])
 
   const handleInvite = (user) => {
     if (user) {
@@ -251,7 +262,7 @@ export function ShareDialog({ open, onClose, documentName }) {
               </Avatar>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {user.username || "Unknown User"} {user.isOwner && "(you)"}
+                  {user.username || "Unknown User"}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {user.email || "No email provided"}
