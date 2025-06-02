@@ -77,8 +77,11 @@ export function ShareDialog({ open, onClose, documentName }) {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         })
         .then((response) => {
-          console.log("API Response:", response.data) // Log the full API response
-          setFilteredUsers(response.data)
+          const allUsers = response.data
+          const filtered = allUsers.filter(
+            (user) => !sharedUsers.some((sharedUser) => sharedUser.userId === user.userId)
+          )
+          setFilteredUsers(filtered)
         })
         .catch((error) => {
           console.error("Failed to fetch users", error)
@@ -86,7 +89,7 @@ export function ShareDialog({ open, onClose, documentName }) {
     } else {
       setFilteredUsers([])
     }
-  }, [inviteInput])
+  }, [inviteInput, sharedUsers])
 
   const handleInvite = (user) => {
     if (user) {
