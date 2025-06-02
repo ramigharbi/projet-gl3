@@ -5,12 +5,17 @@ import { Routes, Route } from "react-router-dom";
 import AuthSection from "./components/AuthSection";
 import DocsHomepage from "./pages/docs/page";
 import DocumentPage from "./pages/document/[id]/page";
+import { clearTokens } from "./utils/jwtUtils";
 import "./CSS/App.css";
 
 function App() {
-  const [authed, setAuthed] = useState(!!localStorage.getItem("token"));
+  // Check both sessionStorage and localStorage for authentication
+  const [authed, setAuthed] = useState(
+    !!(sessionStorage.getItem("token") || localStorage.getItem("token"))
+  );
 
   const handleLogout = () => {
+    clearTokens();
     setAuthed(false);
   };
 

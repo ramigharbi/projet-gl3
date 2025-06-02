@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -17,148 +17,173 @@ import {
   Chip,
   IconButton,
   Divider,
-} from "@mui/material"
-import { Close, Link as LinkIcon, Lock, ExpandMore } from "@mui/icons-material"
-import axios from "axios"
-import { useLocation } from "react-router-dom"
+} from "@mui/material";
+import { Close, Link as LinkIcon, Lock, ExpandMore } from "@mui/icons-material";
+import axios from "axios";
+import { useLocation } from "react-router-dom";
+
+// Helper function to get token from sessionStorage or localStorage
+const getAuthToken = () => {
+  return sessionStorage.getItem("token") || localStorage.getItem("token");
+};
 
 export function ShareDialog({ open, onClose, documentName }) {
-  const [inviteInput, setInviteInput] = useState("")
-  const [accessLevel, setAccessLevel] = useState("editor")
-  const [generalAccess, setGeneralAccess] = useState("restricted")
-  const [sharedUsers, setSharedUsers] = useState([])
-  const [filteredUsers, setFilteredUsers] = useState([])
-  const [documentId, setDocumentId] = useState(null)
-  const location = useLocation()
+  const [inviteInput, setInviteInput] = useState("");
+  const [accessLevel, setAccessLevel] = useState("editor");
+  const [generalAccess, setGeneralAccess] = useState("restricted");
+  const [sharedUsers, setSharedUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [documentId, setDocumentId] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     // Extract document ID from the URL and parse it as an integer
-    const pathSegments = location.pathname.split("/")
-    const idFromUrl = parseInt(pathSegments[pathSegments.length - 1], 10)
+    const pathSegments = location.pathname.split("/");
+    const idFromUrl = parseInt(pathSegments[pathSegments.length - 1], 10);
     if (!isNaN(idFromUrl)) {
-      setDocumentId(idFromUrl)
+      setDocumentId(idFromUrl);
     } else {
-      console.error("Invalid document ID in URL")
+      console.error("Invalid document ID in URL");
     }
-  }, [location])
+  }, [location]);
 
   useEffect(() => {
     if (documentId) {
       // Convert documentId to string before making the request
-      const docIdString = documentId.toString()
+      const docIdString = documentId.toString();
       // Fetch shared users dynamically from the API using GET with query parameter
       axios
         .post(
           "/api/documents/users",
           { documentId: docIdString },
           {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
           }
         )
         .then((response) => {
-          const { owner, editors, viewers } = response.data
-            // Combine users and remove duplicates by username
-            const allUsers = [
+          const { owner, editors, viewers } = response.data;
+          // Combine users and remove duplicates by username
+          const allUsers = [
             { ...owner, access: "owner", isOwner: true },
-            ...editors.map((user) => ({ ...user, access: "editor", isOwner: false })),
-            ...viewers.map((user) => ({ ...user, access: "viewer", isOwner: false })),
-            ]
-            // Remove duplicates by username
-            const seenUsernames = new Set()
-            const users = allUsers.filter(user => {
-            if (seenUsernames.has(user.username)) return false
-            seenUsernames.add(user.username)
-            return true
-            })
-          setSharedUsers(users)
+            ...editors.map((user) => ({
+              ...user,
+              access: "editor",
+              isOwner: false,
+            })),
+            ...viewers.map((user) => ({
+              ...user,
+              access: "viewer",
+              isOwner: false,
+            })),
+          ];
+          // Remove duplicates by username
+          const seenUsernames = new Set();
+          const users = allUsers.filter((user) => {
+            if (seenUsernames.has(user.username)) return false;
+            seenUsernames.add(user.username);
+            return true;
+          });
+          setSharedUsers(users);
         })
         .catch((error) => {
-          console.error("Failed to fetch shared users", error)
-        })
+          console.error("Failed to fetch shared users", error);
+        });
     }
-  }, [documentId])
+  }, [documentId]);
 
   useEffect(() => {
     if (inviteInput.trim()) {
       axios
         .get(`/api/auth/users?query=${inviteInput.trim()}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
         })
         .then((response) => {
-          const allUsers = response.data
+          const allUsers = response.data;
           const filtered = allUsers.filter(
-            (user) => !sharedUsers.some((sharedUser) => sharedUser.userId === user.userId)
-          )
-          setFilteredUsers(filtered)
+            (user) =>
+              !sharedUsers.some(
+                (sharedUser) => sharedUser.userId === user.userId
+              )
+          );
+          setFilteredUsers(filtered);
         })
         .catch((error) => {
-          console.error("Failed to fetch users", error)
-        })
+          console.error("Failed to fetch users", error);
+        });
     } else {
-      setFilteredUsers([])
+      setFilteredUsers([]);
     }
-  }, [inviteInput, sharedUsers])
+  }, [inviteInput, sharedUsers]);
 
   const handleInvite = (user) => {
     if (user) {
-      setInviteInput("")
+      setInviteInput("");
     }
-  }
+  };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
+    navigator.clipboard.writeText(window.location.href);
     // You could show a snackbar here
-  }
+  };
 
   const handleSendInvite = async () => {
     if (!inviteInput.trim()) {
-      console.error("Invite input is empty")
-      return
+      console.error("Invite input is empty");
+      return;
     }
 
-    console.log("Filtered users:", filteredUsers)
-    console.log("Invite input:", inviteInput)
+    console.log("Filtered users:", filteredUsers);
+    console.log("Invite input:", inviteInput);
 
-    const selectedUser = filteredUsers.find((user) => user.username === inviteInput)
+    const selectedUser = filteredUsers.find(
+      (user) => user.username === inviteInput
+    );
     if (!selectedUser) {
-      console.error("User not found in the filtered list")
-      return
+      console.error("User not found in the filtered list");
+      return;
     }
     try {
       const response = await axios.post(
         "/api/documents/invite",
         {
           documentId,
-          userId: selectedUser.userId, // Ensure the correct user ID is passed
-          accessLevel: accessLevel === "editor" ? "editor" : "viewer",
+          userId: selectedUser.userId, // Ensure the correct user ID is passed        accessLevel: accessLevel === "editor" ? "editor" : "viewer",
         },
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
         }
-      )
-      setInviteInput("")
-      console.log(documentId)
+      );
+      setInviteInput("");
+      console.log(documentId);
       const updatedUsersResponse = await axios.post(
         `/api/documents/users`,
         { documentId: documentId.toString() },
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
         }
-      )
+      );
 
-      const { owner, editors, viewers } = updatedUsersResponse.data
+      const { owner, editors, viewers } = updatedUsersResponse.data;
       const users = [
         { ...owner, access: "owner", isOwner: true },
-        ...editors.map((user) => ({ ...user, access: "editor", isOwner: false })),
-        ...viewers.map((user) => ({ ...user, access: "viewer", isOwner: false })),
-      ]
+        ...editors.map((user) => ({
+          ...user,
+          access: "editor",
+          isOwner: false,
+        })),
+        ...viewers.map((user) => ({
+          ...user,
+          access: "viewer",
+          isOwner: false,
+        })),
+      ];
 
-      console.log("Updated shared users:", users)
-      setSharedUsers(users)
+      console.log("Updated shared users:", users);
+      setSharedUsers(users);
     } catch (error) {
-      console.error("Failed to send invite", error)
+      console.error("Failed to send invite", error);
     }
-  }
+  };
 
   return (
     <Dialog
@@ -174,7 +199,13 @@ export function ShareDialog({ open, onClose, documentName }) {
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Typography variant="h6" sx={{ fontSize: "20px", fontWeight: 400 }}>
             Partager "{documentName}"
           </Typography>
@@ -216,7 +247,11 @@ export function ShareDialog({ open, onClose, documentName }) {
                       <MenuItem value="viewer">Lecteur</MenuItem>
                     </Select>
                   </FormControl>
-                  <Button onClick={handleSendInvite} disabled={!inviteInput.trim()} sx={{ textTransform: "none" }}>
+                  <Button
+                    onClick={handleSendInvite}
+                    disabled={!inviteInput.trim()}
+                    sx={{ textTransform: "none" }}
+                  >
                     Envoyer
                   </Button>
                 </Box>
@@ -224,7 +259,15 @@ export function ShareDialog({ open, onClose, documentName }) {
             }}
           />
           {filteredUsers.length > 0 && (
-            <Box sx={{ mt: 1, border: "1px solid #ccc", borderRadius: "8px", maxHeight: "150px", overflowY: "auto" }}>
+            <Box
+              sx={{
+                mt: 1,
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                maxHeight: "150px",
+                overflowY: "auto",
+              }}
+            >
               {filteredUsers.map((user) => (
                 <MenuItem
                   key={user.id}
@@ -257,7 +300,9 @@ export function ShareDialog({ open, onClose, documentName }) {
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Avatar sx={{ width: 32, height: 32, backgroundColor: "#4285f4" }}>
+              <Avatar
+                sx={{ width: 32, height: 32, backgroundColor: "#4285f4" }}
+              >
                 {(user.username || "?").charAt(0)}
               </Avatar>
               <Box>
@@ -270,7 +315,13 @@ export function ShareDialog({ open, onClose, documentName }) {
               </Box>
             </Box>
             <Chip
-              label={user.isOwner ? "Propriétaire" : user.access === "editor" ? "Éditeur" : "Lecteur"}
+              label={
+                user.isOwner
+                  ? "Propriétaire"
+                  : user.access === "editor"
+                  ? "Éditeur"
+                  : "Lecteur"
+              }
               size="small"
               variant="outlined"
               sx={{ textTransform: "capitalize" }}
@@ -333,5 +384,5 @@ export function ShareDialog({ open, onClose, documentName }) {
         </Button>
       </DialogActions>
     </Dialog>
-  )
+  );
 }

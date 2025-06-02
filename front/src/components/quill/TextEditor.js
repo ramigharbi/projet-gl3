@@ -5,31 +5,39 @@ import QuillCursors from "quill-cursors";
 import "./style.css";
 import { io } from "socket.io-client";
 import { useParams } from "react-router-dom";
+import { getCurrentUser, extractDisplayName } from "../../utils/jwtUtils";
 
 // Register the cursors module
 Quill.register("modules/cursors", QuillCursors);
 
-// Generate consistent color based on user ID
+// Generate consistent color based on user ID using a better hash algorithm
 const generateUserColor = (userId) => {
   const colors = [
-    "#FF6B6B",
-    "#4ECDC4",
-    "#45B7D1",
-    "#96CEB4",
-    "#FECA57",
-    "#FF9FF3",
-    "#54A0FF",
-    "#5F27CD",
-    "#00D2D3",
-    "#FF9F43",
-    "#10AC84",
-    "#EE5A24",
-    "#0ABDE3",
-    "#C44569",
-    "#F8B500",
+    "#FF6B6B", // Coral Red
+    "#4ECDC4", // Turquoise
+    "#45B7D1", // Sky Blue
+    "#96CEB4", // Mint Green
+    "#FECA57", // Golden Yellow
+    "#FF9FF3", // Light Pink
+    "#54A0FF", // Bright Blue
+    "#5F27CD", // Deep Purple
+    "#00D2D3", // Cyan
+    "#FF9F43", // Orange
+    "#10AC84", // Emerald
+    "#EE5A24", // Red Orange
+    "#0ABDE3", // Light Blue
+    "#C44569", // Dark Pink
+    "#F8B500", // Amber
+    "#8E44AD", // Purple
+    "#2ECC71", // Green
+    "#E74C3C", // Red
+    "#3498DB", // Blue
+    "#F39C12", // Yellow Orange
   ];
 
-  // Create a simple hash from userId
+  if (!userId) return colors[0];
+
+  // Create a more robust hash from userId
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     const char = userId.charCodeAt(i);
@@ -37,7 +45,14 @@ const generateUserColor = (userId) => {
     hash = hash & hash; // Convert to 32bit integer
   }
 
-  return colors[Math.abs(hash) % colors.length];
+  // Use absolute value and ensure we get a valid index
+  const index = Math.abs(hash) % colors.length;
+
+  console.log(
+    `Color for user ${userId}: ${colors[index]} (hash: ${hash}, index: ${index})`
+  );
+
+  return colors[index];
 };
 
 const SAVE_INTERVAL_MS = 2000;
@@ -58,12 +73,23 @@ export default function TextEditor({ onSelection = () => {} }) {
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
   const [cursors, setCursors] = useState();
-  const [currentUserId, setCurrentUserId] = useState();
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Generate a unique user ID when component mounts
+  // Get current user from JWT token when component mounts
   useEffect(() => {
-    const userId = `user-${Math.random().toString(36).substr(2, 9)}`;
-    setCurrentUserId(userId);
+    const user = getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      console.log("Current user loaded:", user);
+    } else {
+      console.warn("No current user found - user may not be authenticated");
+      // Fallback to anonymous user
+      setCurrentUser({
+        userId: "anonymous",
+        username: "anonymous",
+        displayName: "Anonymous",
+      });
+    }
   }, []);
   useEffect(() => {
     const s = io("http://localhost:3000");
@@ -81,29 +107,41 @@ export default function TextEditor({ onSelection = () => {} }) {
         console.log(`Removed cursor for disconnected user: ${userId}`);
       }
     });
-
     return () => {
       s.disconnect();
     };
-  }, [cursors]); // Handle cursor position updates from other users
+  }, [cursors]);
+
+  // Handle cursor position updates from other users
   useEffect(() => {
-    if (socket == null || cursors == null) return;
+    if (socket == null || cursors == null || currentUser == null) return;
 
     const handleCursorUpdate = (data) => {
-      const { userId, range, userName } = data;
-
-      // Don't show our own cursor (userId is now socket.id from backend)
-      if (userId === socket.id) return;
+      const { userId, range, userName } = data; // Don't show our own cursor - compare by username/userId instead of socket.id
+      if (userId === currentUser.username || userId === currentUser.userId) {
+        console.log(
+          `Skipping own cursor for user: ${userId} (current: ${currentUser.username})`
+        );
+        return;
+      }
 
       try {
         if (range && range.index !== undefined) {
           const color = generateUserColor(userId);
-          // Use provided userName if available, otherwise fallback to 'user' plus ID substring
-          const displayName = userName || `user${userId.slice(3)}`;
+          // Use provided userName if available, otherwise extract from userId
+          const displayName = userName || extractDisplayName(userId);
+
+          console.log(`Processing cursor update for ${userId}:`, {
+            userId,
+            displayName,
+            color,
+            range,
+            currentUser: currentUser.username,
+          });
 
           // Create cursor if it doesn't exist
           cursors.createCursor(userId, displayName, color);
-          console.log(`Cursor name: ${displayName} (created)`);
+          console.log(`Cursor created for ${displayName} with color ${color}`);
 
           // Explicitly try to show the flag
           cursors.toggleFlag(userId, true);
@@ -128,7 +166,7 @@ export default function TextEditor({ onSelection = () => {} }) {
     return () => {
       socket.off("cursor-update", handleCursorUpdate);
     };
-  }, [socket, cursors]);
+  }, [socket, cursors, currentUser]);
 
   useEffect(() => {
     if (socket == null || quill == null) return;
@@ -168,7 +206,7 @@ export default function TextEditor({ onSelection = () => {} }) {
     };
   }, [socket, quill]);
   useEffect(() => {
-    if (socket == null || quill == null || currentUserId == null) return;
+    if (socket == null || quill == null || currentUser == null) return;
 
     const handler = (delta, oldDelta, source) => {
       if (source !== "user") return;
@@ -182,10 +220,10 @@ export default function TextEditor({ onSelection = () => {} }) {
     return () => {
       quill.off("text-change", handler);
     };
-  }, [socket, quill, documentId, currentUserId]);
-  // Handle selection changes to update cursor position
+  }, [socket, quill, documentId, currentUser]); // Handle selection changes to update cursor position
   useEffect(() => {
-    if (socket == null || quill == null || currentUserId == null) return;
+    if (socket == null || quill == null || currentUser == null) return;
+
     const handleSelectionChange = (range, oldRange, source) => {
       // Only send cursor updates for user interactions
       if (source !== "user") return;
@@ -193,7 +231,8 @@ export default function TextEditor({ onSelection = () => {} }) {
       console.log("Selection changed:", {
         range,
         source,
-        userId: currentUserId,
+        userId: currentUser.userId,
+        username: currentUser.username,
       });
 
       if (
@@ -209,11 +248,10 @@ export default function TextEditor({ onSelection = () => {} }) {
       }
 
       socket.emit("cursor-position", {
-        userId: currentUserId,
+        userId: currentUser.username, // Use username as primary identifier
         documentId: documentId,
         range: range, // This can be null when selection is lost
-        // Tag as 'user' plus last 4 chars of ID for consistent naming
-        userName: `user${currentUserId.slice(-4)}`,
+        userName: currentUser.displayName, // Use extracted display name
       });
     };
 
@@ -222,7 +260,7 @@ export default function TextEditor({ onSelection = () => {} }) {
     return () => {
       quill.off("selection-change", handleSelectionChange);
     };
-  }, [socket, quill, documentId, currentUserId, onSelection]);
+  }, [socket, quill, documentId, currentUser, onSelection]);
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
 

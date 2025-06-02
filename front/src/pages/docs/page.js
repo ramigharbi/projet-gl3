@@ -1,48 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { Box } from "@mui/material"
-import { DocsNavBar } from "../../components/DocsNavBar"
-import { TemplateSection } from "../../components/TemplateSection"
-import { RecentDocuments } from "../../components/RecentDocuments"
-import { useDocuments } from "../../context/DocumentContext"
-import axios from "axios"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Box } from "@mui/material";
+import { DocsNavBar } from "../../components/DocsNavBar";
+import { TemplateSection } from "../../components/TemplateSection";
+import { RecentDocuments } from "../../components/RecentDocuments";
+import { useDocuments } from "../../context/DocumentContext";
+import axios from "axios";
+
+// Helper function to get token from sessionStorage or localStorage
+const getAuthToken = () => {
+  return sessionStorage.getItem("token") || localStorage.getItem("token");
+};
 
 const filterDocuments = (docs, query) => {
-  if (!query) return docs
-  const lowerQuery = query.toLowerCase()
-  return docs.filter(doc => 
-    doc.title.toLowerCase().includes(lowerQuery) || 
-    doc.content.toLowerCase().includes(lowerQuery)
-  )
-}
+  if (!query) return docs;
+  const lowerQuery = query.toLowerCase();
+  return docs.filter(
+    (doc) =>
+      doc.title.toLowerCase().includes(lowerQuery) ||
+      doc.content.toLowerCase().includes(lowerQuery)
+  );
+};
 
 export default function DocsHomepage({ onLogout }) {
-  const navigate = useNavigate()
-  const { documents, setDocuments, createDocument } = useDocuments()
-  const [searchQuery, setSearchQuery] = useState("")
+  const navigate = useNavigate();
+  const { documents, setDocuments, createDocument } = useDocuments();
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         const response = await axios.get("/api/documents/user", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        setDocuments(response.data)
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        setDocuments(response.data);
       } catch (error) {
-        console.error("Failed to fetch documents", error)
+        console.error("Failed to fetch documents", error);
         if (error.response?.status === 401) {
-          onLogout()
+          onLogout();
         }
       }
-    }
-    fetchDocuments()
-  }, [onLogout, setDocuments])
+    };
+    fetchDocuments();
+  }, [onLogout, setDocuments]);
 
   const handleSearch = (query) => {
-    setSearchQuery(query)
-  }
+    setSearchQuery(query);
+  };
 
   const handleCreateDocument = async (templateType) => {
     try {
@@ -50,30 +56,33 @@ export default function DocsHomepage({ onLogout }) {
       const newDoc = await createDocument({
         title: "Document sans titre",
         type: templateType,
-      })
+      });
       // Only navigate once we have the document
       if (newDoc && newDoc.id) {
-        navigate(`/document/${newDoc.id}`)
+        navigate(`/document/${newDoc.id}`);
       }
     } catch (error) {
-      console.error("Failed to create document:", error)
+      console.error("Failed to create document:", error);
     }
-  }
+  };
 
   const handleDocumentClick = (documentId) => {
     // Navigate to document editor
-    navigate(`/document/${documentId}`)
-  }
+    navigate(`/document/${documentId}`);
+  };
 
-  const filteredDocuments = filterDocuments(documents, searchQuery)
+  const filteredDocuments = filterDocuments(documents, searchQuery);
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#fafafa" }}>
       <DocsNavBar onSearch={handleSearch} onLogout={onLogout} />
       <Box sx={{ maxWidth: "1200px", mx: "auto", px: 3, py: 4 }}>
         <TemplateSection onCreateDocument={handleCreateDocument} />
-        <RecentDocuments documents={filteredDocuments} onDocumentClick={handleDocumentClick} />
+        <RecentDocuments
+          documents={filteredDocuments}
+          onDocumentClick={handleDocumentClick}
+        />
       </Box>
     </Box>
-  )
+  );
 }

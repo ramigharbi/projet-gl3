@@ -1,10 +1,13 @@
 import React, { useState } from "react";
+import { storeToken } from "./utils/jwtUtils";
 
 export default function AuthForm({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -16,7 +19,8 @@ export default function AuthForm({ onAuth }) {
       });
       const data = await res.json();
       if (res.ok && data.access_token) {
-        localStorage.setItem("token", data.access_token);
+        // Use the new token storage function with per-tab authentication
+        storeToken(data.access_token, rememberMe);
         onAuth();
       } else {
         if (data.errors && Array.isArray(data.errors)) {
@@ -80,6 +84,28 @@ export default function AuthForm({ onAuth }) {
             fontSize: "16px",
           }}
         />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "16px",
+            fontSize: "14px",
+          }}
+        >
+          <input
+            type="checkbox"
+            id="rememberMe"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            style={{ marginRight: "8px" }}
+          />
+          <label
+            htmlFor="rememberMe"
+            style={{ cursor: "pointer", color: "#666" }}
+          >
+            Remember me across tabs
+          </label>
+        </div>
         <button
           type="submit"
           style={{
