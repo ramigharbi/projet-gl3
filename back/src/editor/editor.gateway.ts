@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentEntity } from '../documents/entities/document.entity';
+import { DocumentDeltaEntity } from './entities/document-delta.entity';
 import { Server, Socket } from 'socket.io';
 
 // Define the structure for Quill document
@@ -45,7 +46,7 @@ interface CursorPosition {
     origin: '*',
   },
 })
-export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
+ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -58,6 +59,8 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @InjectRepository(DocumentEntity)
     private documentRepository: Repository<DocumentEntity>,
+    @InjectRepository(DocumentDeltaEntity)
+    private deltaRepository: Repository<DocumentDeltaEntity>,
   ) {}
 
   handleConnection(client: Socket) {
@@ -134,6 +137,13 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
         content = this.defaultValue;
       }
       client.emit('load-document', content);
+      // Send historical deltas for attribution
+      const deltas = await this.deltaRepository.find({
+        where: { documentId: docIdNum },
+        order: { createdAt: 'ASC' },
+        select: ['userId', 'delta', 'createdAt'],
+      });
+      client.emit('load-deltas', deltas);
       console.log(`Document ${documentId} loaded for client ${client.id}`);
     } catch (error) {
       console.error('Error loading document:', error);
@@ -141,22 +151,25 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
   @SubscribeMessage('send-changes')
-  handleSendChanges(
+  // Record and broadcast individual deltas with user attribution
+  @SubscribeMessage('send-changes')
+  async handleSendChanges(
     client: Socket,
     payload: { delta: any; documentId: string },
   ) {
+    const { delta, documentId } = payload;
+    if (!documentId) return;
     try {
-      const { delta, documentId } = payload;
-
-      if (documentId) {
-        // Broadcast the changes to all other clients in the same document room
-        client.broadcast.to(documentId).emit('receive-changes', delta);
-        console.log(
-          `Changes sent from ${client.id} for document ${documentId}`,
-        );
-      }
+      // Broadcast to other clients
+      client.broadcast.to(documentId).emit('receive-changes', delta);
+      // Persist blame delta asynchronously
+      const docIdNum = parseInt(documentId, 10);
+      const userId = client.data.userId as string;
+      // Use insert for efficiency without entity loading
+      await this.deltaRepository.insert({ documentId: docIdNum, userId, delta });
+      console.log(`Delta recorded for doc ${documentId} by ${userId}`);
     } catch (error) {
-      console.error('Error sending changes:', error);
+      console.error('Error on send-changes:', error);
     }
   }
   @SubscribeMessage('save-document')

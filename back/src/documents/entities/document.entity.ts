@@ -1,5 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  ManyToMany,
+  OneToMany,
+  JoinTable,
+} from 'typeorm';
 import { UserEntity } from '../../auth/entities/user.entity';
+// Update the import path if the file exists elsewhere, for example:
+import { DocumentDeltaEntity } from '../../editor/entities/document-delta.entity';
+// Or correct the path as needed based on your project structure.
 
 @Entity('document')
 export class DocumentEntity {
@@ -31,6 +44,12 @@ export class DocumentEntity {
   @ManyToMany(() => UserEntity, (user) => user.editableDocuments)
   @JoinTable()
   editors: UserEntity[];
+
+  @OneToMany(
+    () => DocumentDeltaEntity,
+    (delta: DocumentDeltaEntity) => delta.document,
+  )
+  deltas: DocumentDeltaEntity[];
 
   constructor(partial?: Partial<DocumentEntity>) {
     if (partial) Object.assign(this, partial);
