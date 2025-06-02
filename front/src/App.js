@@ -19,10 +19,13 @@ function App() {
   }
 
   return (
+    <ApolloProvider client={client}>
     <Routes>
       <Route path="/" element={<DocsHomepage onLogout={handleLogout} />} />
       <Route path="/document/:id" element={<DocumentPage />} />
     </Routes>
+    </ApolloProvider>
+      
   );
 }
 

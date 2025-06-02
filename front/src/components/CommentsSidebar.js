@@ -1,24 +1,26 @@
 "use client"
-import { useState } from "react"
 import { Drawer, Box, Typography, IconButton, TextField, Button, Avatar, Paper, Divider } from "@mui/material"
 import { Close, Send } from "@mui/icons-material"
 
-export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) {
-  const [newComment, setNewComment] = useState("")
-
-  const handleAddComment = () => {
-    if (newComment.trim() && onAddComment) {
-      onAddComment(newComment.trim())
-      setNewComment("")
-    }
-  }
-
+export function CommentsSidebar({
+  open,
+  onClose,
+  commentsArray = [],
+  loading = false,
+  commentText = '',
+  setCommentText = () => {},
+  authorName = '',
+  setAuthorName = () => {},
+  selectedRange = null,
+  handleAddComment = () => {},
+  handleDeleteComment = () => {},
+}) {
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleAddComment()
+      e.preventDefault();
+      handleAddComment();
     }
-  }
+  };
 
   return (
     <Drawer
@@ -53,7 +55,9 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
 
         {/* Comments List */}
         <Box sx={{ flexGrow: 1, overflow: "auto", p: 2 }}>
-          {comments.length === 0 ? (
+          {loading ? (
+            <Typography variant="body2" color="text.secondary">Chargement...</Typography>
+          ) : commentsArray.length === 0 ? (
             <Box
               sx={{
                 display: "flex",
@@ -73,9 +77,9 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
             </Box>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {comments.map((comment) => (
+              {commentsArray.map((comment) => (
                 <Paper
-                  key={comment.id}
+                  key={comment.commentId}
                   elevation={0}
                   sx={{
                     p: 2,
@@ -85,18 +89,21 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, mb: 1 }}>
-                    <Avatar sx={{ width: 24, height: 24, fontSize: "12px" }}>{comment.author.charAt(0)}</Avatar>
+                    <Avatar sx={{ width: 24, height: 24, fontSize: "12px" }}>{comment.author?.charAt(0)}</Avatar>
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="caption" sx={{ fontWeight: 500 }}>
                         {comment.author}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        {comment.timestamp.toLocaleDateString()}
+                        {new Date(comment.createdAt).toLocaleDateString()}
                       </Typography>
                     </Box>
+                    <IconButton size="small" onClick={() => handleDeleteComment(comment.commentId)}>
+                      <Close fontSize="small" />
+                    </IconButton>
                   </Box>
                   <Typography variant="body2" sx={{ ml: 4 }}>
-                    {comment.content}
+                    {comment.text}
                   </Typography>
                 </Paper>
               ))}
@@ -112,11 +119,12 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
             fullWidth
             multiline
             rows={3}
-            placeholder="Ajouter un commentaire..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
+            placeholder={selectedRange ? "Ajouter un commentaire..." : "Sélectionnez du texte pour commenter..."}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
             onKeyPress={handleKeyPress}
             variant="outlined"
+            disabled={!selectedRange}
             sx={{
               mb: 1,
               "& .MuiOutlinedInput-root": {
@@ -124,10 +132,15 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
               },
             }}
           />
+          {/* Show current user name instead of input */}
+          <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar sx={{ width: 24, height: 24, fontSize: '12px' }}>{authorName?.charAt(0)}</Avatar>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>{authorName}</Typography>
+          </Box>
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
             <Button
               onClick={handleAddComment}
-              disabled={!newComment.trim()}
+              disabled={!selectedRange || !commentText.trim() || !authorName.trim()}
               variant="contained"
               size="small"
               endIcon={<Send />}
@@ -143,5 +156,5 @@ export function CommentsSidebar({ open, onClose, comments = [], onAddComment }) 
         </Box>
       </Box>
     </Drawer>
-  )
+  );
 }
