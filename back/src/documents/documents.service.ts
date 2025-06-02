@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateDocumentDto, UpdateDocumentDto } from './dto';
@@ -129,6 +129,17 @@ export class DocumentsService {
 
     if (!document) {
       throw new NotFoundException('Document not found');
+    }
+    console.log('getSharedUsers called for document ID:', documentId);
+    console.log('Document fetched:', document);
+    // Ensure the owner is populated if not already
+
+    if (!document.owner && document.ownerId) {
+      const owner = await this.userRepository.findOne({ where: { userId: document.ownerId } });
+      console.log('Owner fetched:', owner);
+      if (owner) {
+        document.owner = owner;
+      }
     }
 
     const result = {
