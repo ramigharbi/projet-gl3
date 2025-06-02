@@ -5,6 +5,9 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DocumentEntity } from '../documents/entities/document.entity';
 import { Server, Socket } from 'socket.io';
 
 // Define the structure for Quill document
@@ -47,11 +50,15 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private lastDocument: BlockNoteDocument | null = null;
-  // In-memory storage for Quill documents
-  private documents: Map<string, QuillDocument> = new Map();
+  // Default Quill document content (empty Delta)
+  private defaultValue: any = { ops: [] };
   // Track user cursors by document
   private userCursors: Map<string, Map<string, any>> = new Map();
-  private defaultValue = '';
+  // Inject repository for persistence
+  constructor(
+    @InjectRepository(DocumentEntity)
+    private documentRepository: Repository<DocumentEntity>,
+  ) {}
 
   handleConnection(client: Socket) {
     // Extract user email and displayName from handshake auth and store on socket data
@@ -103,10 +110,30 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('get-document')
   async handleGetDocument(client: Socket, documentId: string) {
     try {
-      const document = this.findOrCreateDocument(documentId);
+      const docIdNum = parseInt(documentId, 10);
+      let docEntity = await this.documentRepository.findOne({
+        where: { id: docIdNum },
+      });
+      if (!docEntity) {
+        // Create new document record with default content
+        docEntity = this.documentRepository.create({
+          title: `Document ${docIdNum}`,
+          content: '',
+          ownerId: 0,
+        });
+        await this.documentRepository.save(docEntity);
+      }
       client.join(documentId);
-      client.emit('load-document', document.data);
-
+      // Parse stored content or use default
+      let content;
+      try {
+        content = docEntity.content
+          ? JSON.parse(docEntity.content)
+          : this.defaultValue;
+      } catch {
+        content = this.defaultValue;
+      }
+      client.emit('load-document', content);
       console.log(`Document ${documentId} loaded for client ${client.id}`);
     } catch (error) {
       console.error('Error loading document:', error);
@@ -139,15 +166,25 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { data, documentId } = payload;
-
-      if (documentId) {
-        // Update the document in memory
-        const document = this.documents.get(documentId);
-        if (document) {
-          document.data = data;
-          console.log(`Document ${documentId} saved by client ${client.id}`);
-        }
+      const docIdNum = parseInt(documentId, 10);
+      let docEntity = await this.documentRepository.findOne({
+        where: { id: docIdNum },
+      });
+      if (docEntity) {
+        docEntity.content = JSON.stringify(data);
+        await this.documentRepository.save(docEntity);
+        console.log(`Document ${documentId} updated by client ${client.id}`);
+      } else {
+        // Create new document if not exists
+        const newDoc = this.documentRepository.create({
+          title: `Document ${docIdNum}`,
+          content: JSON.stringify(data),
+          ownerId: 0,
+        });
+        await this.documentRepository.save(newDoc);
+        console.log(`Document ${documentId} created by client ${client.id}`);
       }
+      client.emit('save-complete', { documentId });
     } catch (error) {
       console.error('Error saving document:', error);
       client.emit('error', { message: 'Failed to save document' });
@@ -190,29 +227,6 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       console.error('Error handling cursor position:', error);
     }
-  }
-
-  // Helper method to find or create a document
-  private findOrCreateDocument(id: string): QuillDocument {
-    if (!id) {
-      throw new Error('Document ID is required');
-    }
-
-    let document = this.documents.get(id);
-    if (document) {
-      return document;
-    }
-
-    // Create new document if it doesn't exist
-    document = {
-      _id: id,
-      data: this.defaultValue,
-    };
-
-    this.documents.set(id, document);
-    console.log(`Created new document: ${id}`);
-
-    return document;
   }
 
   @SubscribeMessage('editor:update')
