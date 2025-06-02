@@ -32,7 +32,12 @@ interface CursorPosition {
   userName?: string;
 }
 
+/**
+ * WebSocket Gateway for real-time document editing and cursor tracking.
+ * Now served under '/editor' namespace to support user-specific connections.
+ */
 @WebSocketGateway({
+  namespace: 'editor',
   cors: {
     origin: '*',
   },
@@ -49,7 +54,21 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private defaultValue = '';
 
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+    // Extract user email and displayName from handshake auth and store on socket data
+    // Read email and displayName from handshake (auth or query)
+    const email =
+      client.handshake.auth?.email ||
+      client.handshake.query?.email ||
+      'anonymous';
+    const displayName =
+      client.handshake.auth?.displayName ||
+      client.handshake.query?.displayName ||
+      'Anonymous';
+    client.data.userId = email;
+    client.data.displayName = displayName;
+    console.log(
+      `Client connected: ${client.id} (user: ${email} / ${displayName})`,
+    );
     // Send the last known document state to new clients
     if (this.lastDocument) {
       client.emit('editor:update', {
@@ -63,12 +82,19 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
 
-    // Remove user cursors from all documents
+    // Remove user cursors from all documents and notify other clients by userId
     this.userCursors.forEach((documentCursors, documentId) => {
       if (documentCursors.has(client.id)) {
+        // Retrieve stored userId (e.g., email)
+        const cursorInfo = documentCursors.get(client.id);
+        // Use stored userId (email) if available
+        const userId = cursorInfo?.userId || client.data.userId;
+        // Remove from in-memory storage
         documentCursors.delete(client.id);
-        // Notify other users in the document
-        client.broadcast.to(documentId).emit('user-disconnected', client.id);
+        if (userId) {
+          // Notify other users to remove cursor by userId
+          client.broadcast.to(documentId).emit('user-disconnected', userId);
+        }
       }
     });
   }
@@ -148,11 +174,12 @@ export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
           documentCursors.delete(client.id);
         }
 
-        // Broadcast cursor position to all other clients in the same document room
+        // Broadcast cursor position to all other clients using provided userId
         client.broadcast.to(documentId).emit('cursor-update', {
-          userId: client.id, // Use socket ID as user identifier
+          userId: userId, // Use provided userId (e.g., email)
           range,
           userName,
+          socketId: client.id, // Include socket ID to allow clients to skip own events
         });
 
         console.log(

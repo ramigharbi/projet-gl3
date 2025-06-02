@@ -45,13 +45,15 @@ export function getCurrentUser() {
     const payload = decodeJWT(token);
     if (!payload) return null;
 
+    // Get the base identifier (username from JWT)
+    const baseIdentifier = payload.username || payload.email || payload.sub;
+
     return {
-      userId: payload.username || payload.email || payload.sub, // Use username/email as primary identifier
-      username: payload.username || payload.email || payload.sub,
+      userId: baseIdentifier, // Use the raw identifier as userId
+      username: baseIdentifier, // Keep username the same for compatibility
+      email: baseIdentifier, // Add explicit email field for color consistency
       // Extract display name from username (everything before @ if email-like, or first part if contains dots/underscores)
-      displayName: extractDisplayName(
-        payload.username || payload.email || payload.sub
-      ),
+      displayName: extractDisplayName(baseIdentifier),
     };
   } catch (error) {
     console.error("Error getting current user:", error);
