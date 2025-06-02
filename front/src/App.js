@@ -20,17 +20,20 @@ function App() {
   };
 
   if (!authed) {
-    return <AuthSection onAuth={() => setAuthed(true)} />;
+    return (
+      <ApolloProvider client={client}>
+        <AuthSection onAuth={() => setAuthed(true)} />
+      </ApolloProvider>
+    );
   }
 
   return (
     <ApolloProvider client={client}>
-    <Routes>
-      <Route path="/" element={<DocsHomepage onLogout={handleLogout} />} />
-      <Route path="/document/:id" element={<DocumentPage />} />
-    </Routes>
+      <Routes>
+        <Route path="/" element={<DocsHomepage onLogout={handleLogout} />} />
+        <Route path="/document/:id" element={<DocumentPage />} />
+      </Routes>
     </ApolloProvider>
-      
   );
 }
 

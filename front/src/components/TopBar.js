@@ -1,6 +1,6 @@
 "use client"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useMemo } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { AppBar, Toolbar, Typography, IconButton, Button, TextField, Box, Avatar } from "@mui/material"
 import {
   Description as DocumentIcon,
@@ -12,7 +12,6 @@ import {
   ArrowBack,
 } from "@mui/icons-material"
 import { ShareDialog } from "./ShareDialog"
-import { CommentsSidebar } from "./CommentsSidebar"
 
 export function TopBar({ documentName, onDocumentNameChange, onShare, comments = [], onAddComment }) {
   const navigate = useNavigate()
@@ -22,6 +21,10 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
   const [shareOpen, setShareOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
 
+
+  
+  
+  
   const handleNameSubmit = () => {
     onDocumentNameChange(editName)
     setIsEditing(false)
@@ -137,6 +140,8 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
           {/* Right Side Actions */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {/* Comments Button */}
+            
+            
             <IconButton onClick={() => setCommentsOpen(true)} sx={{ color: "#5f6368" }}>
               <Comment />
             </IconButton>
@@ -182,13 +187,6 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
       {/* Share Dialog */}
       <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentName={documentName} onShare={onShare} />
 
-      {/* Comments Sidebar */}
-      <CommentsSidebar
-        open={commentsOpen}
-        onClose={() => setCommentsOpen(false)}
-        comments={comments}
-        onAddComment={onAddComment}
-      />
     </>
   )
 }
