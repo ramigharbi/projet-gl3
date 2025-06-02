@@ -147,7 +147,8 @@ export function ShareDialog({ open, onClose, documentName }) {
         "/api/documents/invite",
         {
           documentId,
-          userId: selectedUser.userId, // Ensure the correct user ID is passed        accessLevel: accessLevel === "editor" ? "editor" : "viewer",
+          userId: selectedUser.userId, // Ensure the correct user ID is passed        
+          accessLevel: accessLevel === "editor" ? "editor" : "viewer",
         },
         {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
