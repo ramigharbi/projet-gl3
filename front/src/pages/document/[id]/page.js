@@ -1,18 +1,27 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { Box, Container, Paper, Typography, CircularProgress, Button } from "@mui/material"
-import { ArrowBack } from "@mui/icons-material"
-import { TopBar } from "../../../components/TopBar"
-import { useDocuments } from "../../../context/DocumentContext"
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  CircularProgress,
+  Button,
+} from "@mui/material";
+import { ArrowBack } from "@mui/icons-material";
+import { TopBar } from "../../../components/TopBar";
+import { useDocuments } from "../../../context/DocumentContext";
+import TextEditor from "../../../components/quill/TextEditor";
 
 export default function DocumentPage() {
-  const { id: documentId } = useParams()
-  const navigate = useNavigate()
-  const { getDocument, updateDocument, isLoading } = useDocuments()
-  const [document, setDocument] = useState(null)
-  const [isDocLoading, setIsDocLoading] = useState(true)
+  const { id: documentId } = useParams();
+  const navigate = useNavigate();
+  const { getDocument, updateDocument, isLoading } = useDocuments();
+  const [document, setDocument] = useState(null);
+  const [isDocLoading, setIsDocLoading] = useState(true);
+  const [selection, setSelection] = useState(null); // Added for TextEditor
   const [comments, setComments] = useState([
     {
       id: "1",
@@ -20,50 +29,52 @@ export default function DocumentPage() {
       content: "Voici un exemple de commentaire sur le document.",
       timestamp: new Date(),
     },
-  ])
+  ]);
 
   useEffect(() => {
     const fetchDocument = async () => {
       if (!isLoading) {
-        setIsDocLoading(true)
+        setIsDocLoading(true);
         try {
-          const doc = await getDocument(documentId)
+          const doc = await getDocument(documentId);
           if (doc) {
             // Convert date strings to Date objects
             setDocument({
               ...doc,
               createdAt: doc.createdAt ? new Date(doc.createdAt) : null,
               updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : null,
-              lastModified: doc.updatedAt ? new Date(doc.updatedAt) : new Date(), // Fall back to current date if no update date
-            })
+              lastModified: doc.updatedAt
+                ? new Date(doc.updatedAt)
+                : new Date(), // Fall back to current date if no update date
+            });
           }
         } catch (error) {
-          console.error("Error fetching document:", error)
+          console.error("Error fetching document:", error);
         } finally {
-          setIsDocLoading(false)
+          setIsDocLoading(false);
         }
       }
-    }
+    };
 
-    fetchDocument()
-  }, [documentId, getDocument, isLoading])
+    fetchDocument();
+  }, [documentId, getDocument, isLoading]);
 
   const handleDocumentNameChange = async (name) => {
     if (document) {
       try {
-        const updatedDoc = await updateDocument(document.id, { title: name })
-        setDocument(prev => ({
+        const updatedDoc = await updateDocument(document.id, { title: name });
+        setDocument((prev) => ({
           ...prev,
           ...updatedDoc,
           createdAt: new Date(updatedDoc.createdAt),
           updatedAt: new Date(updatedDoc.updatedAt),
           lastModified: new Date(updatedDoc.updatedAt),
-        }))
+        }));
       } catch (error) {
-        console.error("Error updating document name:", error)
+        console.error("Error updating document name:", error);
       }
     }
-  }
+  };
 
   const handleAddComment = (content) => {
     const newComment = {
@@ -71,20 +82,27 @@ export default function DocumentPage() {
       author: "Utilisateur actuel",
       content,
       timestamp: new Date(),
-    }
-    setComments([...comments, newComment])
-  }
+    };
+    setComments([...comments, newComment]);
+  };
 
   const handleShare = (users) => {
-    console.log("Sharing with users:", users)
-  }
+    console.log("Sharing with users:", users);
+  };
+
+  // Handler for TextEditor's onSelection prop
+  const handleSelectionChange = (newSelection) => {
+    setSelection(newSelection);
+    // You can do something with the selection here, e.g., show contextual UI
+    console.log("Selection in DocumentPage:", newSelection);
+  };
 
   const handleBackToHome = () => {
-    navigate("/")
-  }
+    navigate("/");
+  };
 
   const formatDateTime = (date) => {
-    if (!date) return "Date inconnue"
+    if (!date) return "Date inconnue";
     try {
       return date.toLocaleDateString("fr-FR", {
         year: "numeric",
@@ -92,19 +110,26 @@ export default function DocumentPage() {
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      })
+      });
     } catch (error) {
-      console.error("Error formatting date:", error)
-      return "Date invalide"
+      console.error("Error formatting date:", error);
+      return "Date invalide";
     }
-  }
+  };
 
   if (isLoading || isDocLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <CircularProgress />
       </Box>
-    )
+    );
   }
 
   if (!document) {
@@ -120,11 +145,15 @@ export default function DocumentPage() {
         }}
       >
         <Typography variant="h6">Document non trouvé</Typography>
-        <Button variant="contained" startIcon={<ArrowBack />} onClick={handleBackToHome}>
+        <Button
+          variant="contained"
+          startIcon={<ArrowBack />}
+          onClick={handleBackToHome}
+        >
           Retour à l'accueil
         </Button>
       </Box>
-    )
+    );
   }
 
   return (
@@ -138,29 +167,7 @@ export default function DocumentPage() {
       />
 
       {/* Document Content Area */}
-      <Box sx={{ flexGrow: 1, backgroundColor: "#f8f9fa", overflow: "auto" }}>
-        <Container maxWidth="md" sx={{ py: 4 }}>
-          <Paper
-            elevation={1}
-            sx={{
-              minHeight: "800px",
-              p: 6,
-              backgroundColor: "white",
-              borderRadius: "8px",
-            }}
-          >
-            <Typography variant="h4" gutterBottom>
-              {document.title}
-            </Typography>
-            <Typography variant="body1" paragraph sx={{ whiteSpace: "pre-wrap" }}>
-              {document.content || "Voici le contenu de votre document. Vous pouvez commencer à taper ici..."}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 4, fontStyle: "italic" }}>
-              Dernière modification: {formatDateTime(document.lastModified)}
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
+      <TextEditor />
     </Box>
-  )
+  );
 }

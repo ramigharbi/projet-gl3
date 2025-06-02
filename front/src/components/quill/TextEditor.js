@@ -196,7 +196,7 @@ export default function TextEditor({ onSelection }) {
         source,
         userId: currentUserId,
       });
-      if(quill.hasFocus()) {
+      if (quill.hasFocus()) {
         onSelection({
           start: range.index,
           end: range.index + (range.length || 0),
