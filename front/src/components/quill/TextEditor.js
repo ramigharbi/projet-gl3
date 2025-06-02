@@ -53,7 +53,7 @@ const TOOLBAR_OPTIONS = [
   ["clean"],
 ];
 
-export default function TextEditor({ onSelection }) {
+export default function TextEditor({ onSelection = () => {} }) {
   const { id: documentId } = useParams();
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
@@ -186,7 +186,6 @@ export default function TextEditor({ onSelection }) {
   // Handle selection changes to update cursor position
   useEffect(() => {
     if (socket == null || quill == null || currentUserId == null) return;
-
     const handleSelectionChange = (range, oldRange, source) => {
       // Only send cursor updates for user interactions
       if (source !== "user") return;
@@ -196,7 +195,13 @@ export default function TextEditor({ onSelection }) {
         source,
         userId: currentUserId,
       });
-      if (quill.hasFocus()) {
+
+      if (
+        range &&
+        quill.hasFocus() &&
+        onSelection &&
+        typeof onSelection === "function"
+      ) {
         onSelection({
           start: range.index,
           end: range.index + (range.length || 0),

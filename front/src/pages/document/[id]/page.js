@@ -167,7 +167,7 @@ export default function DocumentPage() {
       />
 
       {/* Document Content Area */}
-      <TextEditor />
+      <TextEditor onSelection={handleSelectionChange} />
     </Box>
   );
 }
