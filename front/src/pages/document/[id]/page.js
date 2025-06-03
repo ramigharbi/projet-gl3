@@ -1,11 +1,12 @@
 "use client";
-
-import { useState, useEffect } from "react";
+import { MantineProvider, Group, Paper, Stack, Box } from "@mantine/core";
+import "@mantine/core/styles.css";
+import { useCommentsUnified } from "../../../hooks/useCommentsUnified";
+import { editorTheme } from "../../../components/theme";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Box,
   Container,
-  Paper,
   Typography,
   CircularProgress,
   Button,
@@ -13,6 +14,8 @@ import {
 import { ArrowBack } from "@mui/icons-material";
 import { TopBar } from "../../../components/TopBar";
 import { useDocuments } from "../../../context/DocumentContext";
+import { CommentSection } from "../../../components/CommentSection";
+import { DocHeader } from "../../../components/DocHeader";
 import TextEditor from "../../../components/quill/TextEditor";
 import { testConnection, testGetComments } from "../../../test-apollo";
 
@@ -86,15 +89,6 @@ export default function DocumentPage() {
     }
   };
 
-  const handleAddComment = (content) => {
-    const newComment = {
-      id: Date.now().toString(),
-      author: "Utilisateur actuel",
-      content,
-      timestamp: new Date(),
-    };
-    setComments([...comments, newComment]);
-  };
 
   const handleShare = (users) => {
     console.log("Sharing with users:", users);
@@ -128,6 +122,8 @@ export default function DocumentPage() {
 
   if (isLoading || isDocLoading) {
     return (
+      <MantineProvider theme={editorTheme}>
+
       <Box
         sx={{
           display: "flex",
@@ -137,12 +133,15 @@ export default function DocumentPage() {
         }}
       >
         <CircularProgress />
-      </Box>
+        </Box>
+        </MantineProvider>
     );
   }
 
   if (!document) {
     return (
+      <MantineProvider theme={editorTheme}>
+
       <Box
         sx={{
           display: "flex",
@@ -161,11 +160,71 @@ export default function DocumentPage() {
         >
           Retour à l'accueil
         </Button>
-      </Box>
+        </Box>
+        </MantineProvider>
     );
   }
 
   return (
+    <MantineProvider theme={editorTheme}>
+
+      <style>
+              {`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; transform: scale(1); }
+                  50% { opacity: 0.8; transform: scale(1.05); }
+                }
+                
+                @keyframes float {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-10px); }
+                }
+                
+                @keyframes slideInUp {
+                  from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+                
+                .comment-card {
+                  animation: slideInUp 0.6s ease-out;
+                }
+                  .float-animation {
+                  animation: float 3s ease-in-out infinite;
+                }
+                
+                .pulse-animation {
+                  animation: pulse 2s ease-in-out infinite;
+                }
+                
+                @media (max-width: 768px) {
+                  .editor-container {
+                    flex-direction: column !important;
+                  }
+                  
+                  .editor-main {
+                    max-width: 100% !important;
+                  }
+                  
+                  .comments-panel {
+                    width: 100% !important;
+                    min-width: unset !important;
+                    max-height: 60vh !important;
+                  }
+                }
+                
+                @media (max-width: 480px) {
+                  .main-container {
+                    padding: 1rem !important;
+                  }
+                }
+              `}
+            </style>
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {" "}
       <TopBar

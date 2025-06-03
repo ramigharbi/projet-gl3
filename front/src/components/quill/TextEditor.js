@@ -67,7 +67,7 @@ const TOOLBAR_OPTIONS = [
   ["clean"],
 ];
 
-export default function TextEditor({ onSelection = () => {} }) {
+export default function TextEditor({  onRangeSelection = () => {} }) {
   const { id: documentId } = useParams();
   const [socket, setSocket] = useState();
   const [quill, setQuill] = useState();
@@ -223,10 +223,10 @@ export default function TextEditor({ onSelection = () => {} }) {
       if (
         range &&
         quill.hasFocus() &&
-        onSelection &&
-        typeof onSelection === "function"
+        onRangeSelection &&
+        typeof onRangeSelection === "function"
       ) {
-        onSelection({
+        onRangeSelection({
           start: range.index,
           end: range.index + (range.length || 0),
         });
@@ -245,7 +245,7 @@ export default function TextEditor({ onSelection = () => {} }) {
     return () => {
       quill.off("selection-change", handleSelectionChange);
     };
-  }, [socket, quill, documentId, currentUser, onSelection]);
+  }, [socket, quill, documentId, currentUser, onRangeSelection]);
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
 
