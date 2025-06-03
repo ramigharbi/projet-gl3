@@ -166,7 +166,11 @@ interface CursorPosition {
       const docIdNum = parseInt(documentId, 10);
       const userId = client.data.userId as string;
       // Use insert for efficiency without entity loading
-      await this.deltaRepository.insert({ documentId: docIdNum, userId, delta });
+      await this.deltaRepository.insert({
+        documentId: docIdNum,
+        userId,
+        delta,
+      });
       console.log(`Delta recorded for doc ${documentId} by ${userId}`);
     } catch (error) {
       console.error('Error on send-changes:', error);
