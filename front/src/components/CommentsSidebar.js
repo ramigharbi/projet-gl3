@@ -313,7 +313,6 @@ export function CommentsSidebar({
             onChange={(e) => setCommentText(e.target.value)}
             disabled={!selectedRange}
             variant="outlined"
-            disabled={!selectedRange}
             sx={{
               mb: 1,
               "& .MuiOutlinedInput-root": {
@@ -363,6 +362,5 @@ export function CommentsSidebar({
         </Box>
       </Box>
     </Drawer>
-  );
   );
 }

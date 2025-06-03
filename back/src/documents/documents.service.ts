@@ -83,12 +83,9 @@ export class DocumentsService {
       throw new NotFoundException('User not found');
     }
 
-    // Remove user from the opposite list to avoid duplication
     if (accessLevel === 'editor') {
-      document.viewers = document.viewers.filter((viewer) => viewer.userId !== userId);
       document.editors = [...(document.editors || []), user];
     } else {
-      document.editors = document.editors.filter((editor) => editor.userId !== userId);
       document.viewers = [...(document.viewers || []), user];
     }
 

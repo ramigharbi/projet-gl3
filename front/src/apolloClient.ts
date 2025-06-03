@@ -37,7 +37,7 @@ const splitLink = split(
 );
 
 const client = new ApolloClient({
-  link: from([errorLink, splitLink]),
+  link: splitLink,
   cache: new InMemoryCache({
     typePolicies: {
       Query: {
