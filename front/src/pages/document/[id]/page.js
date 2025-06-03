@@ -14,6 +14,7 @@ import { ArrowBack } from "@mui/icons-material";
 import { TopBar } from "../../../components/TopBar";
 import { useDocuments } from "../../../context/DocumentContext";
 import TextEditor from "../../../components/quill/TextEditor";
+import { testConnection, testGetComments } from "../../../test-apollo";
 
 export default function DocumentPage() {
   const { id: documentId } = useParams();
@@ -30,7 +31,6 @@ export default function DocumentPage() {
       timestamp: new Date(),
     },
   ]);
-
   useEffect(() => {
     const fetchDocument = async () => {
       if (!isLoading) {
@@ -58,6 +58,16 @@ export default function DocumentPage() {
 
     fetchDocument();
   }, [documentId, getDocument, isLoading]);
+
+  // Test Apollo Client connection on component mount
+  useEffect(() => {
+    const runTests = async () => {
+      console.log("🔍 Testing Apollo Client connection...");
+      await testConnection();
+      await testGetComments();
+    };
+    runTests();
+  }, []);
 
   const handleDocumentNameChange = async (name) => {
     if (document) {
@@ -89,7 +99,6 @@ export default function DocumentPage() {
   const handleShare = (users) => {
     console.log("Sharing with users:", users);
   };
-
   // Handler for TextEditor's onSelection prop
   const handleSelectionChange = (newSelection) => {
     setSelection(newSelection);
@@ -158,14 +167,16 @@ export default function DocumentPage() {
 
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {" "}
       <TopBar
         documentName={document.title}
         onDocumentNameChange={handleDocumentNameChange}
         onShare={handleShare}
         comments={comments}
         onAddComment={handleAddComment}
+        docId={documentId}
+        selectedRange={selection}
       />
-
       {/* Document Content Area */}
       <TextEditor onSelection={handleSelectionChange} />
     </Box>

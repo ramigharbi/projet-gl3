@@ -22,10 +22,7 @@ import { Close, Link as LinkIcon, Lock, ExpandMore } from "@mui/icons-material";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 
-// Helper function to get token from sessionStorage or localStorage
-const getAuthToken = () => {
-  return sessionStorage.getItem("token") || localStorage.getItem("token");
-};
+import { getToken } from "../utils/jwtUtils";
 
 export function ShareDialog({ open, onClose, documentName }) {
   const [inviteInput, setInviteInput] = useState("");
@@ -56,9 +53,7 @@ export function ShareDialog({ open, onClose, documentName }) {
         .post(
           "/api/documents/users",
           { documentId: docIdString },
-          {
-            headers: { Authorization: `Bearer ${getAuthToken()}` },
-          }
+          { headers: { Authorization: `Bearer ${getToken()}` } }
         )
         .then((response) => {
           const { owner, editors, viewers } = response.data;
@@ -95,7 +90,7 @@ export function ShareDialog({ open, onClose, documentName }) {
     if (inviteInput.trim()) {
       axios
         .get(`/api/auth/users?query=${inviteInput.trim()}`, {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
+          headers: { Authorization: `Bearer ${getToken()}` },
         })
         .then((response) => {
           const allUsers = response.data;
@@ -147,20 +142,17 @@ export function ShareDialog({ open, onClose, documentName }) {
         "/api/documents/invite",
         {
           documentId,
-          userId: selectedUser.userId, // Ensure the correct user ID is passed        accessLevel: accessLevel === "editor" ? "editor" : "viewer",
+          userId: selectedUser.userId,
+          accessLevel: accessLevel === "editor" ? "editor" : "viewer",
         },
-        {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
-        }
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
       setInviteInput("");
       console.log(documentId);
       const updatedUsersResponse = await axios.post(
         `/api/documents/users`,
         { documentId: documentId.toString() },
-        {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
-        }
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
       const { owner, editors, viewers } = updatedUsersResponse.data;

@@ -1,9 +1,10 @@
-"use client"
-import { createContext, useContext, useState, useEffect } from "react"
-import axios from "axios"
+"use client";
+import { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
+import { getToken } from "../utils/jwtUtils";
 
 // Set base URL for axios
-axios.defaults.baseURL = "http://localhost:3000" // Replace with your backend URL
+axios.defaults.baseURL = "http://localhost:3000"; // Replace with your backend URL
 
 // We'll use these templates for the copy feature
 const documentTemplates = [
@@ -92,164 +93,167 @@ const documentTemplates = [
     thumbnail: "/placeholder.svg?height=300&width=200",
     isShared: false,
     owner: "current-user",
-    content: "This is a new document created from a template. You can start editing here...",
+    content:
+      "This is a new document created from a template. You can start editing here...",
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-]
+];
 
-const DocumentContext = createContext(undefined)
+const DocumentContext = createContext(undefined);
 
 export function DocumentProvider({ children }) {
-  const [documents, setDocuments] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [documents, setDocuments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Initialize documents on mount
   useEffect(() => {
     const initializeDocuments = async () => {
       try {
         const response = await axios.get("/api/documents/user", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        })
-        setDocuments(response.data)
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        setDocuments(response.data);
       } catch (error) {
-        console.error("Failed to load documents from API:", error)
-        setDocuments([])
+        console.error("Failed to load documents from API:", error);
+        setDocuments([]);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    initializeDocuments()
-  }, [])
+    initializeDocuments();
+  }, []);
 
   const getDocument = async (id) => {
     try {
       // Convert string id to number since backend expects numeric ids
-      const numericId = parseInt(id, 10)
+      const numericId = parseInt(id, 10);
       if (isNaN(numericId)) {
-        throw new Error('Invalid document ID')
+        throw new Error("Invalid document ID");
       }
 
       const response = await axios.get(`/api/documents/${numericId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      })
-      return response.data
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      return response.data;
     } catch (error) {
-      console.error("Failed to fetch document:", error)
-      return null
+      console.error("Failed to fetch document:", error);
+      return null;
     }
-  }
+  };
 
   const updateDocument = async (id, updates) => {
     try {
-      const numericId = parseInt(id, 10)
+      const numericId = parseInt(id, 10);
       if (isNaN(numericId)) {
-        throw new Error('Invalid document ID')
+        throw new Error("Invalid document ID");
       }
 
       const response = await axios.patch(
         `/api/documents/${numericId}`,
         updates,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      )
-      
-      setDocuments(prevDocuments =>
-        prevDocuments.map(doc => 
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+
+      setDocuments((prevDocuments) =>
+        prevDocuments.map((doc) =>
           doc.id === numericId ? { ...doc, ...response.data } : doc
         )
-      )
-      
-      return response.data
+      );
+
+      return response.data;
     } catch (error) {
-      console.error("Failed to update document:", error)
-      throw error
+      console.error("Failed to update document:", error);
+      throw error;
     }
-  }
+  };
 
   const createDocument = async (document) => {
     // Validate and transform the payload to match CreateDocumentDto
     const payload = {
       title: document.title || "Blank Document",
       content: document.content || "Enter your text here",
-    }
+    };
 
     try {
       const response = await axios.post("/api/documents", payload, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      })
-      const newDocument = response.data
-      setDocuments(prevDocuments => [newDocument, ...prevDocuments])
-      return newDocument
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const newDocument = response.data;
+      setDocuments((prevDocuments) => [newDocument, ...prevDocuments]);
+      return newDocument;
     } catch (error) {
-      console.error("Failed to create document:", error)
-      throw error
+      console.error("Failed to create document:", error);
+      throw error;
     }
-  }
+  };
 
   const deleteDocument = async (id) => {
     try {
-      const numericId = parseInt(id, 10)
+      const numericId = parseInt(id, 10);
       if (isNaN(numericId)) {
-        throw new Error('Invalid document ID')
+        throw new Error("Invalid document ID");
       }
 
       await axios.delete(`/api/documents/${numericId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      })
-      
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+
       // Remove document from state after successful deletion
-      setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== numericId))
-      return true
+      setDocuments((prevDocs) =>
+        prevDocs.filter((doc) => doc.id !== numericId)
+      );
+      return true;
     } catch (error) {
-      console.error("Failed to delete document:", error)
-      throw error
+      console.error("Failed to delete document:", error);
+      throw error;
     }
-  }
+  };
 
   const copyDocument = async (id) => {
     try {
-      const docToCopy = documents.find(doc => doc.id === id)
+      const docToCopy = documents.find((doc) => doc.id === id);
       if (!docToCopy) {
-        throw new Error('Document not found')
+        throw new Error("Document not found");
       }
 
       // Create new document with copied content
       const newDoc = await createDocument({
         title: `${docToCopy.title} (copie)`,
         content: docToCopy.content,
-        type: docToCopy.type
-      })
+        type: docToCopy.type,
+      });
 
-      return newDoc
+      return newDoc;
     } catch (error) {
-      console.error("Failed to copy document:", error)
-      throw error
+      console.error("Failed to copy document:", error);
+      throw error;
     }
-  }
+  };
 
   return (
-    <DocumentContext.Provider value={{ 
-      documents, 
-      setDocuments, 
-      getDocument, 
-      updateDocument, 
-      createDocument, 
-      deleteDocument,
-      copyDocument,
-      isLoading 
-    }}>
+    <DocumentContext.Provider
+      value={{
+        documents,
+        setDocuments,
+        getDocument,
+        updateDocument,
+        createDocument,
+        deleteDocument,
+        copyDocument,
+        isLoading,
+      }}
+    >
       {children}
     </DocumentContext.Provider>
-  )
+  );
 }
 
 export function useDocuments() {
-  const context = useContext(DocumentContext)
+  const context = useContext(DocumentContext);
   if (context === undefined) {
-    throw new Error("useDocuments must be used within a DocumentProvider")
+    throw new Error("useDocuments must be used within a DocumentProvider");
   }
-  return context
+  return context;
 }

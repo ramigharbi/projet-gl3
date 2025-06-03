@@ -46,7 +46,7 @@ interface CursorPosition {
     origin: '*',
   },
 })
- export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class EditorGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 

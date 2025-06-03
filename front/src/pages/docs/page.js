@@ -8,11 +8,7 @@ import { TemplateSection } from "../../components/TemplateSection";
 import { RecentDocuments } from "../../components/RecentDocuments";
 import { useDocuments } from "../../context/DocumentContext";
 import axios from "axios";
-
-// Helper function to get token from sessionStorage or localStorage
-const getAuthToken = () => {
-  return sessionStorage.getItem("token") || localStorage.getItem("token");
-};
+import { getToken } from "../../utils/jwtUtils";
 
 const filterDocuments = (docs, query) => {
   if (!query) return docs;
@@ -33,7 +29,7 @@ export default function DocsHomepage({ onLogout }) {
     const fetchDocuments = async () => {
       try {
         const response = await axios.get("/api/documents/user", {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
+          headers: { Authorization: `Bearer ${getToken()}` },
         });
         setDocuments(response.data);
       } catch (error) {

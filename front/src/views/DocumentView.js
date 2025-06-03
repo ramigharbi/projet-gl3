@@ -201,7 +201,10 @@ function DocumentView({ docId = "default-doc" }) {
                   },
                 }}
               >
-                <TextEditor onSelection={setSelectedRange} />
+                <TextEditor
+                  onSelection={setSelectedRange}
+                  comments={commentsArray}
+                />
               </Box>
             </Paper>
           </Stack>

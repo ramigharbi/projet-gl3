@@ -1,6 +1,15 @@
 /**
  * JWT utility functions for token decoding and user information extraction
+ * Toggle storage using the 'useSessionStorage' flag: true for sessionStorage, false for localStorage.
  */
+const useSessionStorage = true; // set to false to use localStorage instead
+
+/**
+ * Get the configured storage (sessionStorage or localStorage)
+ */
+function getStorage() {
+  return useSessionStorage ? sessionStorage : localStorage;
+}
 
 /**
  * Decode JWT token to get payload without verification
@@ -38,8 +47,7 @@ export function decodeJWT(token) {
 export function getCurrentUser() {
   try {
     // Try sessionStorage first (tab-specific), then localStorage (global)
-    let token =
-      sessionStorage.getItem("token") || localStorage.getItem("token");
+    const token = getStorage().getItem("token");
     if (!token) return null;
 
     const payload = decodeJWT(token);
@@ -92,8 +100,7 @@ export function extractDisplayName(username) {
  */
 export function isTokenExpired() {
   try {
-    const token =
-      sessionStorage.getItem("token") || localStorage.getItem("token");
+    const token = getStorage().getItem("token");
     if (!token) return true;
 
     const payload = decodeJWT(token);
@@ -116,11 +123,10 @@ export function isTokenExpired() {
 export function storeToken(token, rememberGlobally = false) {
   if (!token) return;
 
-  // Always store in sessionStorage for tab-specific authentication
-  sessionStorage.setItem("token", token);
-
-  // Optionally store in localStorage for persistence across tabs
-  if (rememberGlobally) {
+  // Store token in the configured storage
+  getStorage().setItem("token", token);
+  // Optionally store globally in localStorage regardless of primary storage
+  if (rememberGlobally && useSessionStorage) {
     localStorage.setItem("token", token);
   }
 }
@@ -129,6 +135,13 @@ export function storeToken(token, rememberGlobally = false) {
  * Clear authentication tokens
  */
 export function clearTokens() {
+  // Remove from both storages to ensure cleanup
   sessionStorage.removeItem("token");
   localStorage.removeItem("token");
+}
+/**
+ * Get token from configured storage
+ */
+export function getToken() {
+  return getStorage().getItem("token");
 }

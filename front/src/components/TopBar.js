@@ -1,7 +1,17 @@
-"use client"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { AppBar, Toolbar, Typography, IconButton, Button, TextField, Box, Avatar } from "@mui/material"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { useCommentsUnified } from "../hooks/useCommentsUnified";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Button,
+  TextField,
+  Box,
+  Avatar,
+} from "@mui/material";
 import {
   Description as DocumentIcon,
   Star,
@@ -10,41 +20,87 @@ import {
   Share,
   VideoCall,
   ArrowBack,
-} from "@mui/icons-material"
-import { ShareDialog } from "./ShareDialog"
-import { CommentsSidebar } from "./CommentsSidebar"
+} from "@mui/icons-material";
+import { ShareDialog } from "./ShareDialog";
+import { clearTokens } from "../utils/jwtUtils";
+import { CommentsSidebar } from "./CommentsSidebar";
 
-export function TopBar({ documentName, onDocumentNameChange, onShare, comments = [], onAddComment }) {
-  const navigate = useNavigate()
-  const [isEditing, setIsEditing] = useState(false)
-  const [editName, setEditName] = useState(documentName)
-  const [isStarred, setIsStarred] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+export function TopBar({
+  documentName,
+  onDocumentNameChange,
+  onShare,
+  onAddComment,
+  docId,
+  selectedRange,
+}) {
+  const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(documentName);
+  const [isStarred, setIsStarred] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Comment-related states
+  const [commentText, setCommentText] = useState("");
+  const [authorName, setAuthorName] = useState("");
+
+  const { commentsMap, loading, addComment, deleteComment } =
+    useCommentsUnified(docId);
+
+  // Convert commentsMap to array for display
+  const commentsArray = useMemo(
+    () => Array.from(commentsMap.values()),
+    [commentsMap]
+  );
+  // Comment handlers
+  const handleAddComment = async () => {
+    if (!selectedRange || !commentText.trim() || !authorName.trim()) return;
+
+    try {
+      console.log("Adding comment with:", {
+        docId,
+        selectedRange,
+        commentText: commentText.trim(),
+        authorName: authorName.trim(),
+      });
+      await addComment(selectedRange, commentText.trim(), authorName.trim());
+
+      setCommentText("");
+    } catch (error) {
+      console.error("Add comment error:", error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await deleteComment(commentId);
+    } catch (error) {
+      console.error("Delete comment error:", error);
+    }
+  };
 
   const handleNameSubmit = () => {
-    onDocumentNameChange(editName)
-    setIsEditing(false)
-  }
+    onDocumentNameChange(editName);
+    setIsEditing(false);
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      handleNameSubmit()
+      handleNameSubmit();
     }
     if (e.key === "Escape") {
-      setEditName(documentName)
-      setIsEditing(false)
+      setEditName(documentName);
+      setIsEditing(false);
     }
-  }
+  };
 
   const handleBackToHome = () => {
-    navigate("/")
-  }
+    navigate("/");
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem("token")
-    navigate("/")
-  }
+    clearTokens();
+    navigate("/");
+  };
 
   return (
     <>
@@ -61,7 +117,11 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
           {/* Back Button (new) */}
           <IconButton
             edge="start"
-            sx={{ mr: 2, color: "#5f6368", display: { xs: "flex", sm: "none" } }}
+            sx={{
+              mr: 2,
+              color: "#5f6368",
+              display: { xs: "flex", sm: "none" },
+            }}
             onClick={handleBackToHome}
           >
             <ArrowBack />
@@ -136,16 +196,18 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
 
           {/* Right Side Actions */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {/* Comments Button */}
-            <IconButton onClick={() => setCommentsOpen(true)} sx={{ color: "#5f6368" }}>
+            {" "}
+            {/* Comments Button */}{" "}
+            <IconButton
+              onClick={() => setCommentsOpen(true)}
+              sx={{ color: "#5f6368" }}
+            >
               <Comment />
             </IconButton>
-
             {/* Video Call Button */}
             <IconButton sx={{ color: "#5f6368" }}>
               <VideoCall />
             </IconButton>
-
             {/* Share Button */}
             <Button
               variant="contained"
@@ -163,7 +225,6 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
             >
               Partager
             </Button>
-
             {/* User Avatar */}
             <Avatar
               sx={{
@@ -178,17 +239,27 @@ export function TopBar({ documentName, onDocumentNameChange, onShare, comments =
           </Box>
         </Toolbar>
       </AppBar>
-
       {/* Share Dialog */}
-      <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentName={documentName} onShare={onShare} />
-
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        documentName={documentName}
+        onShare={onShare}
+      />{" "}
       {/* Comments Sidebar */}
       <CommentsSidebar
         open={commentsOpen}
         onClose={() => setCommentsOpen(false)}
-        comments={comments}
-        onAddComment={onAddComment}
+        commentsArray={commentsArray}
+        loading={loading}
+        selectedRange={selectedRange}
+        commentText={commentText}
+        setCommentText={setCommentText}
+        authorName={authorName}
+        setAuthorName={setAuthorName}
+        handleAddComment={handleAddComment}
+        handleDeleteComment={handleDeleteComment}
       />
     </>
-  )
+  );
 }
